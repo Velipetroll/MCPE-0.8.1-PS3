@@ -3,9 +3,9 @@ An attempt to decompile MCPE 0.8.1 and to make it possible to run it natively on
 
 ## Building
 
-### Cloning the repo and extracting sounds
+### Cloning the repo and preparing assets
 * Clone the repo with `--recursive` flag (or use `git submodule init` and `git submodule update` after cloning if you forgot to add it)
-* You must have the original 0.8.1 apk file to extract sounds and obtain assets (the compiled file will crash or not work properly without them).
+* **Place the original MCPE 0.8.1 `.apk` file in the root directory of the project.** The `Makefile` will automatically extract the necessary files and move them to the correct directories inside the `build/` folder to generate the `.pkg`. (The compiled game will crash without these assets).
 * Run `python tools/get_sound_data.py <path/to/libminecraftpe.so>` - it should generate `pcm_data.c`
 * Move `pcm_data.c` to `./minecraftpe/impl/`
 
@@ -19,7 +19,7 @@ docker build -t ps3dev-mcpe .
 ```
 
 **2. Compile the game:**
-Navigate to the root of the MCPE project (where the `Makefile` is located) and run the container to compile:
+Navigate to the root of the MCPE project (where the `Makefile` and the `.apk` are located) and run the container to compile:
 ```bash
 # On Linux / Mac / Git Bash:
 docker run --rm -it -v "$PWD:/mcpe" -w /mcpe ps3dev-mcpe make clean all
@@ -27,12 +27,12 @@ docker run --rm -it -v "$PWD:/mcpe" -w /mcpe ps3dev-mcpe make clean all
 # On Windows (CMD):
 docker run --rm -it -v "%cd%:/mcpe" -w /mcpe ps3dev-mcpe make clean all
 ```
-The output will be placed in the `build/` directory, containing the `.elf` executables and a ready-to-use PS3 Jailbreak Folder (`MCPE00801`).
+The output will be placed in the `build/` directory. The `Makefile` will automatically handle asset extraction and package creation. You will find the compiled `.elf` executables, the installable `.pkg` file, and the ready-to-use PS3 Jailbreak Folder (`MCPE00801`).
 
 ## Running (PS3 / RPCS3)
-* Extract the `assets` folder from the real MCPE 0.8.1 apk.
-* Copy the `assets` folder inside the generated PS3 build directory: `build/MCPE00801/USRDIR/`
-* Move the `MCPE00801` folder to `/dev_hdd0/game/` on a jailbroken PS3, or boot the folder directly using the RPCS3 Emulator.
+Since the `Makefile` automatically sets up the assets for you:
+* **For a real PS3:** Install the generated `.pkg` file using the Package Manager on your jailbroken console, or move the `build/MCPE00801` folder to `/dev_hdd0/game/`.
+* **For RPCS3 Emulator:** Simply boot the `build/MCPE00801` folder or install the `.pkg` directly into the emulator.
 
 ## Some additional info:
 * JSON library that was probably used by Mojang: https://chromium.googlesource.com/external/jsoncpp/+/6921bf1feef6f1fb83935ae3943f07753488311d/jsoncpp
