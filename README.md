@@ -5,7 +5,7 @@ An attempt to decompile MCPE 0.8.1 and to make it possible to run it natively on
 
 ### Cloning the repo and preparing assets
 * Clone the repo with the `--recursive` flag (or run `git submodule init` and `git submodule update` after cloning if you forgot to add it).
-* **⚠️ IMPORTANT: Place the original MCPE 0.8.1 `.apk` file directly in the root directory of the project.** You do not need to unzip it manually. The `Makefile` will automatically extract all the necessary files from the APK and move them to the correct directories inside the `build/` folder to generate the `.pkg`. *(Note: The compiled game will crash if you skip this step).*
+* **⚠️ IMPORTANT: Place the original MCPE 0.8.1 `.apk` file directly in the root directory of the project.** You do not need to unzip it manually. The `Makefile` will automatically extract all the necessary files from the APK and move them to the correct directories inside the `build/` folder to generate the `.pkg`. *(Note: The compiled game crash if you skip this step).*
 * Run `python tools/get_sound_data.py <path/to/libminecraftpe.so>` - it should generate `pcm_data.c`.
 * Move `pcm_data.c` to `./minecraftpe/impl/`.
 
