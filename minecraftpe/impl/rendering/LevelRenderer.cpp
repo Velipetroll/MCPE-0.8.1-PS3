@@ -31,8 +31,13 @@
 #include <perf/Stopwatch.hpp>
 #include <sstream>
 
+extern "C" {
+	void glStencilFunc(unsigned int func, int ref, unsigned int mask);
+	void glStencilOp(unsigned int fail, unsigned int zfail, unsigned int zpass);
+}
+
 LevelRenderer::LevelRenderer(Minecraft* minecraft, std::shared_ptr<TextureAtlas> a3)
-	: field_164(Color4::BLACK) {
+: field_164(Color4::BLACK) {
 	this->field_160 = this->field_15C = 0; //XXX doesnt seem to be in mcpe
 	this->destroyProgress = 0.0;
 	this->field_1C = 0;
@@ -257,11 +262,8 @@ void LevelRenderer::_renderStars(float a2) {
 			glRotatef((float)(SunAngle / 6.2832) * 360.0, 1.0, 0.0, 0.0);
 			glColor4f(sb, sb, sb, 1.0);
 			this->starsMesh.render();
-			//~v5
 		}
 		glPopMatrix();
-		//~v7
-		//~v6
 	}
 }
 void LevelRenderer::_renderSunOrMoon(float a2, bool_t a3) {
@@ -314,10 +316,8 @@ void LevelRenderer::_renderSunOrMoon(float a2, bool_t a3) {
 			glColor4f(1.0, 1.0, 1.0, 1.0);
 			glRotatef(v8, 1.0, 0.0, 0.0);
 			Tesselator::instance.draw(1);
-			//BlendFunctionState::~BlendFunctionState((BlendFunctionState *)v18);
 		}
 		glPopMatrix();
-		//DisableState::~DisableState((DisableState *)&v19);
 	}
 }
 void LevelRenderer::cullAndSort(FrustumCuller* a2, float a3, float a4) {
@@ -349,7 +349,7 @@ void LevelRenderer::cullAndSort(FrustumCuller* a2, float a3, float a4) {
 	this->field_38 = 0;
 	Vec3 v37(ve->prevPosX + (float)((float)(ve->posX - ve->prevPosX) * a4), ve->prevPosY + (float)((float)(ve->posY - ve->prevPosY) * a4), ve->prevPosZ + (float)((float)(ve->posZ - ve->prevPosZ) * a4));
 
-	this->nearChunks.clear(); //TODO check
+	this->nearChunks.clear();
 	this->farChunks.clear();
 	static Vec3 _D6E0698C(8, 8, 8);
 	float v17 = a3 * a3;
@@ -567,11 +567,11 @@ void LevelRenderer::renderClouds(float a2) {
 	glFogf(0xB63u, 0.0);
 	glFogf(0xB64u, v17);
 	if(v7 > 1.0) {
-#ifdef USEGLES
+		#ifdef USEGLES
 		glDepthRangef(0.0, 1.0);
-#else
+		#else
 		glDepthRange(0.0, 1.0);
-#endif
+		#endif
 	}
 	glPushMatrix();
 	glTranslatef(-(float)(v9 * 16.0), v7, -(float)(v13 * 16.0));
@@ -589,16 +589,12 @@ void LevelRenderer::renderClouds(float a2) {
 	glFogf(0xB63u, v16 * 0.7);
 	glFogf(0xB64u, v16);
 	if(v7 > 1.0) {
-#ifdef USEGLES
+		#ifdef USEGLES
 		glDepthRangef(0.0, 0.7);
-#else
+		#else
 		glDepthRange(0.0, 0.7);
-#endif
+		#endif
 	}
-	//DisableState::~DisableState((DisableState *)&textes);
-	//EnableClientState::~EnableClientState((EnableClientState *)&res);
-	//DisableState::~DisableState((DisableState *)&v28);
-	//EnableState::~EnableState((EnableState *)&v27);
 }
 void LevelRenderer::renderDebug(const AABB& a2, float a3) {
 	float minX; // r11
@@ -772,9 +768,6 @@ int32_t LevelRenderer::renderFarChunks(float a2) {
 				glPopMatrix();
 			}
 		}
-		//EnableState::~EnableState((EnableState*)&v13);
-		//EnableClientState::~EnableClientState(&v12);
-		//EnableClientState::~EnableClientState(&v11);
 	}
 	glPopMatrix();
 	return v4;
@@ -806,9 +799,6 @@ void LevelRenderer::renderFilledHitSelect(Player* a2, float a3, Tile* a4, const 
 	Tesselator::instance.offset(0.0, 0.0, 0.0);
 	glDepthMask(1u);
 	glPopMatrix();
-	//EnableState::~EnableState((EnableState *)&v15);
-	//BlendFunctionState::~BlendFunctionState((BlendFunctionState *)&v16);
-	//DisableState::~DisableState((DisableState *)&v14);
 }
 void LevelRenderer::renderHit(Player* a2, const HitResult& a3, int32_t df, void* a5, float a6) {
 	Tile* v8;	 // r7
@@ -816,7 +806,6 @@ void LevelRenderer::renderHit(Player* a2, const HitResult& a3, int32_t df, void*
 	int32_t v11; // r9
 	int32_t v12; // r4
 	int32_t v14; // r5
-	int32_t v16; // [sp+10h] [bp-28h] BYREF
 
 	if(!df && this->destroyProgress > 0.0) {
 		v8 = 0;
@@ -824,6 +813,8 @@ void LevelRenderer::renderHit(Player* a2, const HitResult& a3, int32_t df, void*
 		glPushMatrix();
 		{
 			EnableState v16(32823);
+			glEnable(0x0BE2); // 3042 = GL_BLEND
+
 			this->textures->loadAndBindTexture("terrain-atlas.tga");
 			v10 = this->level->getTile(a3.field_4, a3.field_8, a3.field_C);
 			if(v10 > 0) {
@@ -841,10 +832,11 @@ void LevelRenderer::renderHit(Player* a2, const HitResult& a3, int32_t df, void*
 			v14 = a3.field_C;
 			this->field_70->tesselateInWorld(v8, v11, v12, v14, *this->destroyTexture.getUV((int32_t)(float)(this->destroyProgress * 10.0)));
 			Tesselator::instance.draw(1);
-			//EnableState::~EnableState((EnableState*)&v16);
+
+			glDisable(0x0BE2);
+			glBlendFunc(0x0302, 0x0303);
 		}
 		glPopMatrix();
-		//BlendFunctionState::~BlendFunctionState((BlendFunctionState *)&v17);
 	}
 }
 void LevelRenderer::renderHitOutline(Player* a2, const HitResult& a3, int32_t a4, void*, float a6) {
@@ -877,7 +869,6 @@ void LevelRenderer::renderHitOutline(Player* a2, const HitResult& a3, int32_t a4
 
 			this->render(v16);
 		}
-		//~v14
 	}
 }
 void LevelRenderer::renderHitSelect(Player* a2, const HitResult& a3, int32_t a4, void* a5, float a6) {
@@ -935,7 +926,7 @@ void LevelRenderer::renderShadows(const std::multimap<int32_t, Entity*, std::gre
 
 	DisableState v20(3553);
 	glDepthMask(0);
-	EnableState v21(2960); //destroyed befrore glDepthMask(1);
+	EnableState v21(2960);
 	Color4 color = this->level->getSkyColor(this->minecraft->viewEntityMaybe, a4);
 	v8 = (float)(color.r * 0.5) + 0.4;
 	v9 = (float)(color.g * 0.5) + 0.4;
@@ -947,7 +938,8 @@ void LevelRenderer::renderShadows(const std::multimap<int32_t, Entity*, std::gre
 	color.r = (float)((float)((float)(v26.a * v26.r) + (float)(v8 * (float)(1.0 - v26.a))) * 0.8) * 0.25;
 	color.clamp();
 	color.a = (float)((float)((float)((float)(color.r + color.g) + color.b) * 0.33333) * 1.2) + 0.1;
-	if((float)((float)(fabsf(this->shadowRed - color.r) + fabsf(this->shadowGreen - color.g)) + fabsf(this->shadowBlue - color.b)) > 0.05 || !this->shadowOverlayBuffer.arrayBuffer) {
+
+	if((float)((float)(fabsf(this->shadowRed - color.r) + fabsf(this->shadowGreen - color.g)) + fabsf(this->shadowBlue - color.b)) > 0.05 || !this->shadowOverlayBuffer.arraysCount) {
 		this->_buildShadowOverlay(color);
 	}
 	glPushMatrix();
@@ -991,7 +983,14 @@ void LevelRenderer::renderShadows(const std::multimap<int32_t, Entity*, std::gre
 			glTranslatef(0.0, -3.0, 0.0);
 		}
 		glStencilFunc(0x202u, 1, 0xFFu);
-		this->shadowOverlayBuffer.render();
+
+		// --- FIX DEL BUG "VOID FOG" GIGANTE (DESVANECIDO NEGRO) ---
+		// Comentamos la linea que dibuja el degradado del vacio AQUI
+		// para que no se superponga jamas sobre los bloques.
+		// ¡La magia de este Feature ahora sucede en renderSky!
+		// this->shadowOverlayBuffer.render();
+		// ----------------------------------------------------------
+
 		glMatrixMode(0x1701u);
 		glPopMatrix();
 		glMatrixMode(0x1700u);
@@ -1001,24 +1000,37 @@ void LevelRenderer::renderShadows(const std::multimap<int32_t, Entity*, std::gre
 	glDepthMask(1u);
 }
 void LevelRenderer::renderSky(float a2) {
-	Dimension* dimensionPtr; // r3
-	int32_t v5;				 // r6
-	Entity* v6;				 // [sp+4h] [bp-2Ch] BYREF
-	float v7;				 // [sp+8h] [bp-28h] BYREF
-	int32_t v8;				 // [sp+Ch] [bp-24h] BYREF
+	Dimension* dimensionPtr;
+	int32_t v5;
 
 	dimensionPtr = this->minecraft->level->dimensionPtr;
 	v5 = dimensionPtr->field_C;
 	if(!dimensionPtr->field_C) {
-		glDepthMask(dimensionPtr->field_C);
+		glDepthMask(0); // GL_FALSE (Apagar escritura de profundidad)
 		{
-			EnableState v6(0xB60);
-			DisableState v7(0xB44);
-			DisableState v8(0xDE1);
+			EnableState v6(0xB60); // GL_FOG
+			DisableState v7(0xB44); // GL_CULL_FACE
+			DisableState v8(0xDE1); // GL_TEXTURE_2D
 			Color4 red = this->level->getSkyColor(this->minecraft->viewEntityMaybe, a2);
 			glColor4f(red.r, red.g, red.b, 1.0);
 			this->skyMesh.render();
-			//~v8, ~v7, ~v6
+
+			// --- VOID FOG FEATURE ---
+			// Hemos movido la "Niebla del vacio" a la ultima capa de renderizado.
+			// Al dibujarse aqui (antes que el terreno), queda perfectamente en el fondo como un desvanecido.
+			if (this->shadowOverlayBuffer.arraysCount > 0) {
+				glPushMatrix();
+				glTranslatef(0.0f, -2.5f, 0.0f); // Lo bajamos por debajo de la linea del horizonte
+				glScalef(4.0f, 4.0f, 4.0f); // Lo hacemos lo suficientemente grande para cubrir la camara
+
+				EnableClientState vColor(0x8076u); // GL_COLOR_ARRAY
+				EnableState vBlend(3042); // GL_BLEND
+				glBlendFunc(0x0302, 0x0303); // Transparencia alfa suave
+
+				this->shadowOverlayBuffer.render();
+				glPopMatrix();
+			}
+			// ------------------------
 		}
 		this->_renderSunOrMoon(a2, 1);
 		this->_renderSunOrMoon(a2, v5);
@@ -1228,7 +1240,7 @@ bool LevelRenderer::updateDirtyChunks(Mob* a2, bool_t a3) {
 			if(!v9->isInFrustumMaybe) {
 				continue;
 			}
-LABEL_4:
+			LABEL_4:
 			if(!v7) {
 				v7 = new std::vector<RenderChunk*>();
 			}
@@ -1281,7 +1293,7 @@ LABEL_4:
 	while(1) {
 		v25 = v39[v23];
 		if(v25) break;
-LABEL_38:
+		LABEL_38:
 		if(v23-- == 0) {
 			goto LABEL_39;
 		}
@@ -1297,7 +1309,7 @@ LABEL_38:
 	}
 	v39[v23] = 0;
 	v39[0] = 0;
-LABEL_39:
+	LABEL_39:
 	int v30 = 0;
 	int k;
 	for(k = 0; k != this->_renderChunks.size(); ++k) {

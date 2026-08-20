@@ -7,6 +7,8 @@
 #include <network/mco/MojangConnector.hpp>
 #include <sstream>
 #include <util/Util.hpp>
+#include <AppPlatform.hpp> // VITAL PARA EVITAR CRASHEO
+#include <stdio.h> // Para logs
 
 Options::Option Options::Option::MUSIC{1, "options.music", 0};
 Options::Option Options::Option::SOUND{1, "options.sound", 1};
@@ -33,8 +35,11 @@ std::vector<int32_t> Options::DIFFICULTY_LEVELS = {0, 2};
 std::vector<int32_t> Options::RENDERDISTANCE_LEVELS = {3, 2, 1, 0};
 
 void Options::update() {
+	printf("[Options] update() invocado. Leyendo options.txt...\n"); fflush(stdout);
 	std::vector<std::string> v13 = this->settingFolderPath.getOptionStrings();
-	for(int i = 0;; i += 2) {
+	printf("[Options] Se leyeron %d parametros del archivo.\n", (int)v13.size()); fflush(stdout);
+
+	for(size_t i = 0;; i += 2) {
 		if(i >= v13.size()) break;
 		if(v13[i] == OptionStrings::Multiplayer_Username) {
 			if(v13[i + 1].size()) {
@@ -132,7 +137,7 @@ void Options::validateVersion(void) {
 }
 
 void Options::toggle(const Options::Option* a2, int32_t a3) {
-	bool_t bv; // r0
+	bool_t bv;
 
 	if(a2 == &Options::Option::INVERT_MOUSE) {
 		this->invertMouse ^= 1u;
@@ -280,9 +285,10 @@ void Options::notifyOptionUpdate(const Options::Option* a2, float a3) {
 void Options::notifyOptionUpdate(const Options::Option* a2, bool_t a3) {
 	this->minecraft->optionUpdated(a2, a3);
 }
-void Options::load(void) {
-}
+void Options::load(void) {}
+
 void Options::initDefaultValues(void) {
+	printf("[Options] initDefaultValues() invocado.\n"); fflush(stdout);
 	this->beta = 0;
 	this->field_F0 = 1;
 	this->patch = 0;
@@ -312,7 +318,12 @@ void Options::initDefaultValues(void) {
 	this->limitFramerate = 0;
 	this->renderDistance = 2;
 	this->useTouchscreen = this->minecraft->supportNonTouchscreen();
-	float v4 = this->minecraft->platform()->getPixelsPerMillimeter();
+
+	printf("[Options] Obteniendo PixelsPerMillimeter...\n"); fflush(stdout);
+	// REEMPLAZO VITAL: Como AppPlatform::_singleton es NULL en este momento,
+	// y estamos en PS3 (pantalla de TV), fijamos un valor constante seguro.
+	float v4 = 6.0f; // Valor de densidad de píxeles ideal para una TV.
+
 	if(v4 > 12) v4 = 12;
 	else if(v4 <= 3) v4 = 3;
 
@@ -367,7 +378,10 @@ void Options::initDefaultValues(void) {
 	this->keyMenuCancel.keyCode = 4;
 	this->keyMenuNext.keyCode = 20;
 	this->setAdditionalHiddenOptions({});
+
+	printf("[Options] initDefaultValues() completado con exito.\n"); fflush(stdout);
 }
+
 bool_t Options::hideOption(const Options::Option* a2) {
 	if(a2 == &Options::Option::USE_TOUCHSCREEN && !this->minecraft->supportNonTouchscreen()) {
 		return 1;
@@ -427,15 +441,9 @@ float Options::getProgressValue(const Options::Option* a2) {
 	}
 	return 0;
 }
-std::string Options::getMessage(const Options::Option*) {
-	return "Options::getMessage - Not implemented"; //actual mcpe code
-}
-std::string Options::getKeyMessage(int32_t) {
-	return "Options::getKeyMessage not implemented"; //actual mcpe code
-}
-std::string Options::getKeyDescription(int32_t) {
-	return "Options::getKeyDescription not implemented"; //yes
-}
+std::string Options::getMessage(const Options::Option*) { return "Options::getMessage - Not implemented"; }
+std::string Options::getKeyMessage(int32_t) { return "Options::getKeyMessage not implemented"; }
+std::string Options::getKeyDescription(int32_t) { return "Options::getKeyDescription not implemented"; }
 int32_t Options::getIntValue(const Options::Option* a2) {
 	if(a2 == &Options::Option::DIFFICULTY) {
 		return this->difficulty;
@@ -445,49 +453,21 @@ int32_t Options::getIntValue(const Options::Option* a2) {
 	}
 	return 0;
 }
-std::string Options::getDescription(const Options::Option*, std::string a4) {
-	return a4;
-}
+std::string Options::getDescription(const Options::Option*, std::string a4) { return a4; }
 bool_t Options::getBooleanValue(const Options::Option* a2) {
-	if(a2 == &Options::Option::INVERT_MOUSE) {
-		return this->invertMouse;
-	}
-	if(a2 == &Options::Option::VIEW_BOBBING) {
-		return this->viewBobbing;
-	}
-	if(a2 == &Options::Option::LIMIT_FRAMERATE) {
-		return this->limitFramerate;
-	}
-	if(a2 == &Options::Option::THIRD_PERSON) {
-		return this->thirdPerson;
-	}
-	if(a2 == &Options::Option::HIDE_GUI) {
-		return this->hideGUI;
-	}
-	if(a2 == &Options::Option::SERVER_VISIBLE) {
-		return this->serverVisible;
-	}
-	if(a2 == &Options::Option::LEFT_HANDED) {
-		return this->leftHanded;
-	}
-	if(a2 == &Options::Option::USE_TOUCHSCREEN) {
-		return this->useTouchscreen;
-	}
-	if(a2 == &Options::Option::USE_TOUCH_JOYPAD) {
-		return this->useJoypad;
-	}
-	if(a2 == &Options::Option::DESTROY_VIBRATION) {
-		return this->destroyVibration;
-	}
-	if(a2 == &Options::Option::FANCY_SKIES) {
-		return this->fancySkies;
-	}
-	if(a2 == &Options::Option::ANIMATE_TEXTURES) {
-		return this->animateTextures;
-	}
-	if(a2 == &Options::Option::GRAPHICS) {
-		return this->graphics;
-	}
+	if(a2 == &Options::Option::INVERT_MOUSE) return this->invertMouse;
+	if(a2 == &Options::Option::VIEW_BOBBING) return this->viewBobbing;
+	if(a2 == &Options::Option::LIMIT_FRAMERATE) return this->limitFramerate;
+	if(a2 == &Options::Option::THIRD_PERSON) return this->thirdPerson;
+	if(a2 == &Options::Option::HIDE_GUI) return this->hideGUI;
+	if(a2 == &Options::Option::SERVER_VISIBLE) return this->serverVisible;
+	if(a2 == &Options::Option::LEFT_HANDED) return this->leftHanded;
+	if(a2 == &Options::Option::USE_TOUCHSCREEN) return this->useTouchscreen;
+	if(a2 == &Options::Option::USE_TOUCH_JOYPAD) return this->useJoypad;
+	if(a2 == &Options::Option::DESTROY_VIBRATION) return this->destroyVibration;
+	if(a2 == &Options::Option::FANCY_SKIES) return this->fancySkies;
+	if(a2 == &Options::Option::ANIMATE_TEXTURES) return this->animateTextures;
+	if(a2 == &Options::Option::GRAPHICS) return this->graphics;
 	return 0;
 }
 std::string Options::formatDescriptionString(const Options::Option* a2, const char_t* a3, const char_t** a4, int32_t a5) {
@@ -501,35 +481,29 @@ bool_t Options::canModify(const Options::Option* a2) {
 }
 void Options::addOptionToSaveOutput(std::vector<std::string>& a2, std::string a3, std::string a4) {
 	std::stringstream v11;
-	v11 << a3;
-	v11 << ":";
-	v11 << a4;
+	v11 << a3 << ":" << a4;
 	a2.emplace_back(v11.str());
 }
 void Options::addOptionToSaveOutput(std::vector<std::string>& a2, std::string a3, int32_t a4) {
 	std::stringstream v11;
-	v11 << a3;
-	v11 << ":";
-	v11 << a4;
+	v11 << a3 << ":" << a4;
 	a2.emplace_back(v11.str());
 }
 void Options::addOptionToSaveOutput(std::vector<std::string>& a2, std::string a3, float a4) {
 	std::stringstream v11;
-	v11 << a3;
-	v11 << ":";
-	v11 << a4;
+	v11 << a3 << ":" << a4;
 	a2.emplace_back(v11.str());
 }
 void Options::addOptionToSaveOutput(std::vector<std::string>& a2, std::string a3, bool a4) {
 	std::stringstream v11;
-	v11 << a3;
-	v11 << ":";
-	v11 << a4;
+	v11 << a3 << ":" << a4;
 	a2.emplace_back(v11.str());
 }
 
 void Options::init(Minecraft* mc, std::string a3) {
+	printf("[Options] init() invocado con ruta base: %s\n", a3.c_str()); fflush(stdout);
 	this->minecraft = mc;
 	this->settingFolderPath.setSettingsFolderPath(a3);
 	this->initDefaultValues();
+	printf("[Options] init() finalizado.\n"); fflush(stdout);
 }

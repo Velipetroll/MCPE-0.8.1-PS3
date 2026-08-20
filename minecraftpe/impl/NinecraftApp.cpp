@@ -30,6 +30,8 @@
 #include <tile/material/Material.hpp>
 #include <unigl.h>
 #include <input/Multitouch.hpp>
+#include <AppPlatform.hpp>
+#include <stdio.h>
 
 std::shared_ptr<TextureAtlas> NinecraftApp::_itemsTextureAtlas;
 std::shared_ptr<TextureAtlas> NinecraftApp::_terrainTextureAtlas;
@@ -40,7 +42,6 @@ NinecraftApp::NinecraftApp(){
 	this->field_D4C = 0;
 	this->field_D50 = 0;
 	this->field_D64 = 0;
-	//TODO bsd_signal(13);
 }
 
 std::shared_ptr<TextureAtlas> NinecraftApp::getTextureAtlas(TextureAtlasId atlas){
@@ -66,11 +67,11 @@ void NinecraftApp::initGLStates(){
 	glDisable(0x8037u);
 	glDisable(0xB50u);
 	glDepthFunc(GL_LEQUAL);
-#ifdef USEGLES
+	#ifdef USEGLES
 	glDepthRangef(0, 1.0);
-#else
+	#else
 	glDepthRange(0, 1.0);
-#endif
+	#endif
 	glAlphaFunc(0x204u, 0.5);
 	glCullFace(0x405u);
 	glShadeModel(0x1D00u);
@@ -82,15 +83,12 @@ void NinecraftApp::initGLStates(){
 	glStencilFunc(0x202u, 0, 0xFFu);
 	glStencilMask(0xFFu);
 	glLightModelf(0xB52u, 0.0);
-	glPolygonOffset(-1.0, -1.0);
-	this->powerVR = this->platform()->isPowerVR();
+	this->powerVR = AppPlatform::_singleton->isPowerVR();
 }
 
 void NinecraftApp::restartServer(){
-	Level* levelPtr; // r3
-	Level* v6; // r0
-	Entity* v7; // r1
-	ServerSideNetworkHandler* serverSideNetworkHandler; // r0
+	Level* levelPtr;
+	ServerSideNetworkHandler* serverSideNetworkHandler;
 
 	levelPtr = this->level;
 	if(levelPtr) {
@@ -108,15 +106,10 @@ void NinecraftApp::restartServer(){
 		}
 	}
 }
-void NinecraftApp::updateStats(){
+void NinecraftApp::updateStats(){}
+NinecraftApp::~NinecraftApp(void){ this->teardown(); }
 
-}
-
-NinecraftApp::~NinecraftApp(void){
-	this->teardown();
-}
 bool_t NinecraftApp::onLowMemory(void){
-	//TODO check
 	if(glBufferPool.unusedBuffers.empty()) return 0;
 	while(glBufferPool.unusedBuffers.back() != glBufferPool.unusedBuffers.front()){
 		uint32_t s = glBufferPool.unusedBuffers.at(0);
@@ -130,23 +123,19 @@ void NinecraftApp::onAppResumed(void){
 	Tesselator::instance.init();
 	Minecraft::onAppResumed();
 }
+
 void NinecraftApp::update(void){
-	//this->field_D68.lock(); //TODO std::__ndk1::system_error: unique_lock::lock: references null mutex: Operation not permitted
 	if(!this->some_std_vec.empty()){
-		for(int v2 = 0; v2 < this->some_std_vec.size(); ++v2){
+		for(size_t v2 = 0; v2 < this->some_std_vec.size(); ++v2){
 			this->handleBackNoReturn();
 		}
-		this->some_std_vec.clear(); //TODO check
+		this->some_std_vec.clear();
 	}
-	//this->field_D68.unlock(); //TODO should have if(v5.field_4)
 	++this->field_D4C;
 	Multitouch::commit();
+
 	Minecraft::update();
-#if defined(ANDROID) and defined(USEGLES)
-	if(this->context.field_10){
-		eglSwapBuffers(this->context.field_0, this->context.field_8);
-	}
-#endif
+
 	Mouse::reset2();
 	if(this->level){
 		if(this->rakNetInstance->isProbablyBroken()){
@@ -157,6 +146,7 @@ void NinecraftApp::update(void){
 	}
 	this->updateStats();
 }
+
 bool_t NinecraftApp::handleBack(bool_t a2){
 	if(!this->field_CF4){
 		if(this->level){
@@ -182,25 +172,33 @@ bool_t NinecraftApp::handleBack(bool_t a2){
 	return 1;
 }
 void NinecraftApp::handleBack(void){
-	this->some_std_vec.push_back(1); //TODO check
+	this->some_std_vec.push_back(1);
 }
+
 void NinecraftApp::init(void){
-	const char* v43[] = {"/games", "/com.mojang", "/minecraftpe"};
-	createTree(this->dataPathMaybe.c_str(), v43, 3);
-	this->field_D00 = this->dataPathMaybe + "/games" + "/com.mojang" + "/minecraftpe";
+	printf("[NinecraftApp] Configurando directorio base seguro...\n"); fflush(stdout);
+	this->field_D00 = this->dataPathMaybe;
+
+	printf("[NinecraftApp] Inicializando tablas matematicas...\n"); fflush(stdout);
 	int32_t x = 0;
 	do{
 		float v7 = sin((float)x / 10430.0);
 		Mth::_sin[x] = v7;
 		++x;
 	}while(x != 65536);
+
 	if(!NinecraftApp::_hasInitedStatics){
+		printf("[NinecraftApp] Cargando atlas de texturas...\n"); fflush(stdout);
 		std::string v40 = "images/";
 		NinecraftApp::_hasInitedStatics = 1;
+
 		NinecraftApp::_terrainTextureAtlas = std::shared_ptr<TextureAtlas>(new TextureAtlas(v40+"terrain.meta"));
 		NinecraftApp::_itemsTextureAtlas = std::shared_ptr<TextureAtlas>(new TextureAtlas(v40+"items.meta"));
+
 		NinecraftApp::_terrainTextureAtlas->load(this);
 		NinecraftApp::_itemsTextureAtlas->load(this);
+
+		printf("[NinecraftApp] Inicializando Bloques e Items...\n"); fflush(stdout);
 		Material::initMaterials();
 		MobCategory::initMobCategories();
 		Tile::initTiles(NinecraftApp::_terrainTextureAtlas);
@@ -208,14 +206,25 @@ void NinecraftApp::init(void){
 		Biome::initBiomes();
 		TileEntity::initTileEntities();
 	}
+
+	printf("[NinecraftApp] initGLStates()...\n"); fflush(stdout);
 	this->initGLStates();
+
+	printf("[NinecraftApp] Tesselator::instance.init()...\n"); fflush(stdout);
 	Tesselator::instance.init();
-	I18n::loadLanguage(this->platform(), "en_US");
+
+	printf("[NinecraftApp] Cargando idioma...\n"); fflush(stdout);
+	I18n::loadLanguage(AppPlatform::_singleton, "en_US");
+
+	printf("[NinecraftApp] Llamando a Minecraft::init()...\n"); fflush(stdout);
 	Minecraft::init();
 
+	printf("[NinecraftApp] Configurando almacenamiento...\n"); fflush(stdout);
 	this->levelStorageSource = new ExternalFileLevelStorageSource(this->dataPathMaybe, this->field_CC4);
 	this->field_CFC = 0;
-	this->texturesPtr = new Textures(&this->options, this->platform());
+
+	printf("[NinecraftApp] Creando texturas dinamicas...\n"); fflush(stdout);
+	this->texturesPtr = new Textures(&this->options, AppPlatform::_singleton);
 	this->texturesPtr->addDynamicTexture(new FireTexture());
 	this->texturesPtr->addDynamicTexture(new WaterTexture(*NinecraftApp::_terrainTextureAtlas->getTextureItem("still_water")->getUV(0)));
 	this->texturesPtr->addDynamicTexture(new WaterSideTexture());
@@ -223,15 +232,22 @@ void NinecraftApp::init(void){
 	this->texturesPtr->addDynamicTexture(new LavaSideTexture(*NinecraftApp::_terrainTextureAtlas->getTextureItem("flowing_lava")->getUV(0)));
 	this->gui.texturesLoaded(this->texturesPtr);
 	this->field_190 = 0;
+
+	printf("[NinecraftApp] Creando GameRenderer...\n"); fflush(stdout);
 	this->levelRenderer = new LevelRenderer(this, std::shared_ptr<TextureAtlas>(NinecraftApp::_terrainTextureAtlas));
 	this->gameRenderer = new GameRenderer(this);
 	this->particleEngine = new ParticleEngine(this->level, this->texturesPtr);
-	this->font = new Font(this->platform(), &this->options, "font/default8.png", this->texturesPtr);
+	this->font = new Font(AppPlatform::_singleton, &this->options, "font/default8.png", this->texturesPtr);
 	this->perfRenderer = new PerfRenderer(this, this->font);
 	this->checkGLError("Init complete");
+
+	printf("[NinecraftApp] Validando version...\n"); fflush(stdout);
 	this->updateStatusUserAttributes();
 	this->options.validateVersion();
+
+	printf("[NinecraftApp] Seteando menu inicial...\n"); fflush(stdout);
 	this->screenChooser.setScreen(START_MENU_SCREEN);
+	printf("[NinecraftApp] EXITO TOTAL EN INIT\n"); fflush(stdout);
 }
 
 void NinecraftApp::teardown(void){

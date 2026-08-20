@@ -38,8 +38,8 @@ PlayScreen::PlayScreen(bool_t a2) {
 	this->field_B4 = 0;
 	this->field_C4 = "";
 	this->field_118 = v4;
-	std::string v6 = "Welcome to the Minecraft Realms Alpha! We're still testing out features, but eventually Realms will let up to 10" " Pocket Edition users play together online. It's currently free, and limited to a set amount of servers. \n" "\n" "\n" "Realms will be an optional, paid service once it's released. Have fun!";
-	std::string v7 = "Minecraft Realms is currently in a limited alpha test. More servers will be available to register from this page" " as the service is developed, so check back soon.\n" "\n" "Realms servers may be down or be reset while we are working toward the beta release.";
+	std::string v6 = "Welcome to the Minecraft Realms Alpha! We're still testing out features, but eventually Realms will let up to 10 Pocket Edition users play together online. It's currently free, and limited to a set amount of servers. \n\n\nRealms will be an optional, paid service once it's released. Have fun!";
+	std::string v7 = "Minecraft Realms is currently in a limited alpha test. More servers will be available to register from this page as the service is developed, so check back soon.\n\nRealms servers may be down or be reset while we are working toward the beta release.";
 	std::string v8 = "Tap 'New' to create your own Realms server!\n\nFree during alpha.";
 	this->setPlayScreenStateSetting(PlayScreenState::ZERO, 0, 0, 0, 0, 0, 0, PlayScreenPanel::NONE, "");
 	this->setPlayScreenStateSetting(PlayScreenState::ONE, 0, 0, 0, 1, 0, 0, PlayScreenPanel::MESSAGE, v6);
@@ -55,40 +55,55 @@ PlayScreen::PlayScreen(bool_t a2) {
 	this->setPlayScreenStateSetting(PlayScreenState::ELEVEN, 1, 0, 0, 0, 0, 1, PlayScreenPanel::LOCAL_SERVER_LIST, "");
 	this->setPlayScreenStateSetting(PlayScreenState::TWELVE, 1, 1, 0, 0, 1, 0, PlayScreenPanel::LOCAL_SERVER_LIST, "");
 }
+
 std::shared_ptr<GuiElement> PlayScreen::buildJoinRealmsScreen(bool_t) {
-	//TODO
-	printf("PlayScreen::buildJoinRealmsScreen - not implemented\n");
 	return std::shared_ptr<GuiElement>();
 }
-std::shared_ptr<GuiElement> PlayScreen::buildLocalServerList() { //TODO returns std::shared_ptr<GuiElement>
+
+std::shared_ptr<GuiElement> PlayScreen::buildLocalServerList() {
 	this->field_50 = 0;
 	bool isEditMode = this->isEditMode();
+
+	// Reiniciar botones base
+	this->resetBaseButtons();
 
 	if(!this->field_1F4.get()) {
 		this->field_1F4 = std::shared_ptr<PackedScrollContainer>(new PackedScrollContainer(0, 0, 0));
 	}
-	//TODO check is it actually dynamic_pointer_cast
 	std::shared_ptr<PackedScrollContainer> v31 = std::dynamic_pointer_cast<PackedScrollContainer>(this->field_1F4);
 	v31.get()->clearAll();
+
+	// 1. Servidores externos
 	std::unordered_map<int, ExternalServer> servers = *this->minecraft->externalServerFile->getExternalServers();
 	for(auto server: servers) {
 		std::shared_ptr<LocalServerListItemElement> v32(new LocalServerListItemElement(this->minecraft, ExternalServer(server.second), isEditMode, this));
 		v32->init(this->minecraft);
 		v31->addChild(v32);
+		if(v32->field_2C) {
+			// Evita que Screen::render dibuje un fondo gris sólido encima del texto
+			v32->field_2C->setOverrideScreenRendering(1);
+			this->buttons.emplace_back(v32->field_2C);
+		}
 	}
 
+	// 2. Servidores LAN
 	for(auto&& p: this->field_88) {
 		if(!p.field_0.IsEmpty()) {
 			std::shared_ptr<LocalServerListItemElement> v34(new LocalServerListItemElement(p));
 			v34->init(this->minecraft);
 			v31->addChild(v34);
+			if(v34->field_2C) {
+				v34->field_2C->setOverrideScreenRendering(1);
+				this->buttons.emplace_back(v34->field_2C);
+			}
 		}
 	}
 
+	// 3. Mundos guardados
 	std::vector<LevelSummary> v35;
 	this->minecraft->getLevelSource()->getLevelList(v35);
 	if(!v35.empty()) {
-		std::sort(v35.begin(), v35.end()); //TODO check
+		std::sort(v35.begin(), v35.end());
 	}
 
 	for(auto&& v23: v35) {
@@ -96,48 +111,57 @@ std::shared_ptr<GuiElement> PlayScreen::buildLocalServerList() { //TODO returns 
 			std::shared_ptr<LocalServerListItemElement> v32(new LocalServerListItemElement(this->minecraft, v23, isEditMode));
 			v32->init(this->minecraft);
 			v31->addChild(v32);
+			if(v32->field_2C) {
+				// Evita que el fondo del botón tape el nombre, fecha y modo del mundo
+				v32->field_2C->setOverrideScreenRendering(1);
+				this->buttons.emplace_back(v32->field_2C);
+			}
 		}
 	}
 	return this->field_1F4;
 }
+
 std::shared_ptr<GuiElement> PlayScreen::buildMCOServerList() {
 	if(!this->field_1FC) {
 		this->field_1FC = std::shared_ptr<PackedScrollContainer>(new PackedScrollContainer(0, 0, 0));
 	}
 	std::shared_ptr<PackedScrollContainer> v23 = std::dynamic_pointer_cast<PackedScrollContainer>(this->field_1FC);
 	v23->clearAll();
-	//TODO
-	printf("PlayScreen::buildMCOServerList - not implemented\n");
 	return this->field_1FC;
 }
+
 std::shared_ptr<GuiElement> PlayScreen::buildMessageScreen() {
-	//TODO check
 	std::shared_ptr<PackedScrollContainer> v4(new PackedScrollContainer(0, 0, 0));
 	PlayScreenStateSetting* stateData = this->getStateData(this->field_114);
 	v4->addChild(std::shared_ptr<Label>(new Label(stateData->field_C, this->minecraft, -1, 5, 2, this->field_214->width, 1)));
 	v4->setupPositions();
 	return v4;
 }
+
 void PlayScreen::closeScreen() {
 	this->minecraft->cancelLocateMultiplayer();
 	this->minecraft->screenChooser.setScreen(ScreenId::START_MENU_SCREEN);
 }
+
 PlayScreenState PlayScreen::getState() {
 	return this->field_114;
 }
+
 PlayScreenStateSetting* PlayScreen::getStateData(PlayScreenState a2) {
 	return &this->field_11C[a2];
 }
+
 bool_t PlayScreen::isEditMode() {
 	return this->field_84 == this->editButton;
 }
+
 bool_t PlayScreen::isLocalPlayScreen() {
 	return 0;
 }
+
 void PlayScreen::joinMCOServer(MCOServerListItem) {
-	//TODO join mco server
-	printf("PlayScreen::joinMCOServer - not implemented\n");
 }
+
 void PlayScreen::resetBaseButtons() {
 	this->buttons.clear();
 	this->buttons.emplace_back(this->header);
@@ -146,15 +170,17 @@ void PlayScreen::resetBaseButtons() {
 	this->buttons.emplace_back(this->editButton);
 	this->buttons.emplace_back(this->externalButton);
 }
+
 void PlayScreen::resetCurrentlyWaitingMCOCancelButton(void) {
 	if(this->field_B4) {
 		Button** but = std::find(this->buttons.data(), this->buttons.data() + this->buttons.size(), this->field_B4);
 		if(but != (this->buttons.data() + this->buttons.size())) {
-			this->buttons.erase(this->buttons.begin() + (but - this->buttons.data())); //TODO check
+			this->buttons.erase(this->buttons.begin() + (but - this->buttons.data()));
 		}
 	}
 	this->field_B4 = 0;
 }
+
 void PlayScreen::setMainPanel(PlayScreenPanel a2) {
 	this->elements.clear();
 	switch(a2) {
@@ -188,6 +214,7 @@ void PlayScreen::setMainPanel(PlayScreenPanel a2) {
 	}
 	this->setupPositions();
 }
+
 void PlayScreen::setPlayScreenSate(PlayScreenState a2, bool_t a3) {
 	if(a3 || a2 != this->field_114) {
 		this->resetBaseButtons();
@@ -198,16 +225,16 @@ void PlayScreen::setPlayScreenSate(PlayScreenState a2, bool_t a3) {
 		this->setMainPanel(state->panel);
 	}
 }
+
 void PlayScreen::setPlayScreenStateSetting(PlayScreenState state, bool_t a3, bool_t a4, bool_t a5, bool_t a6, bool_t a7, bool_t a8, PlayScreenPanel a9, const std::string& a10) {
 	PlayScreenStateSetting v16(a3, a4, a5, a6, a7, a8, a9);
 	v16.field_C = a10;
-
 	this->field_11C[state] = v16;
 }
+
 void PlayScreen::signOut() {
-	//TODO
-	printf("PlayScreen::signOut - not implemented\n");
 }
+
 void PlayScreen::updateHeaderItems(PlayScreenState a2) {
 	this->newButton->setActiveAndVisibility(this->getStateData(a2)->showNewButton);
 	this->editButton->setActiveAndVisibility(this->getStateData(a2)->showEditButton);
@@ -217,36 +244,35 @@ void PlayScreen::updateHeaderItems(PlayScreenState a2) {
 }
 
 void PlayScreen::updateMCOServerList() {
-	//TODO
-	printf("PlayScreen::updateMCOServerList - not implemented\n");
 }
+
 void PlayScreen::updateMCOStatus() {
-	if(this->minecraft->mojangConnector->getConnectionStatus() && !this->field_A4 && this->minecraft->mojangConnector->getConnectionStatus()) {
+	if(this->minecraft->mojangConnector->getConnectionStatus() && !this->field_A4) {
 		safeStopAndRemove<std::shared_ptr<RestRequestJob>>(this->field_9C);
 		this->field_9C = RestRequestJob::CreateJob(RRT_GET, this->minecraft->mojangConnector->getMCOSercice(), this->minecraft);
 		this->field_9C->setMethod("/info/status");
 		RestRequestJob::launchRequest(
 			this->field_9C,
 			this->minecraft->mojangConnector->getThreadCollection(),
-			[this](int32_t a2, const std::string& a3, const RestCallTagData& a4, std::shared_ptr<RestRequestJob> v11) { //automatically copies it?
-				bool buyServerEnabled = 0, createServersEnabled = 0, serviceEnabled = 0;
-				this->minecraft->mojangConnector->getMCOParser()->parseStatus(a3, buyServerEnabled, createServersEnabled, serviceEnabled);
-				this->minecraft->mojangConnector->setMCOServiceEnabled(serviceEnabled);
-				this->minecraft->mojangConnector->setMCOCreateServersEnabled(createServersEnabled);
-				safeStopAndRemove<std::shared_ptr<RestRequestJob>>(this->field_9C);
-				if(serviceEnabled) {
-					safeStopAndRemove<std::shared_ptr<RestRequestJob>>(this->field_9C);
-					this->updateRealmsState();
-				} else {
-					this->minecraft->screenChooser.setScreen(START_MENU_SCREEN);
-				}
-			},
-			[this](bool, bool, int32_t, const std::string&, const RestCallTagData&, std::shared_ptr<RestRequestJob> v9){ //same as in prev func
-				safeStopAndRemove<std::shared_ptr<RestRequestJob>>(this->field_9C);
-			}
+									  [this](int32_t, const std::string& a3, const RestCallTagData&, std::shared_ptr<RestRequestJob>) {
+										  bool buyServerEnabled = 0, createServersEnabled = 0, serviceEnabled = 0;
+										  this->minecraft->mojangConnector->getMCOParser()->parseStatus(a3, buyServerEnabled, createServersEnabled, serviceEnabled);
+										  this->minecraft->mojangConnector->setMCOServiceEnabled(serviceEnabled);
+										  this->minecraft->mojangConnector->setMCOCreateServersEnabled(createServersEnabled);
+										  safeStopAndRemove<std::shared_ptr<RestRequestJob>>(this->field_9C);
+										  if(serviceEnabled) {
+											  this->updateRealmsState();
+										  } else {
+											  this->minecraft->screenChooser.setScreen(START_MENU_SCREEN);
+										  }
+									  },
+								[this](bool, bool, int32_t, const std::string&, const RestCallTagData&, std::shared_ptr<RestRequestJob>){
+									safeStopAndRemove<std::shared_ptr<RestRequestJob>>(this->field_9C);
+								}
 		);
 	}
 }
+
 void PlayScreen::updateRealmsState() {
 	bool createServersEnabled = this->minecraft->mojangConnector->isMCOCreateServersEnabled();
 	std::shared_ptr<std::unordered_map<long long, MCOServerListItem>> v6 = this->minecraft->mojangConnector->getMCOServerList();
@@ -304,6 +330,7 @@ void PlayScreen::render(int32_t mx, int32_t my, float pt) {
 	Screen::render(mx, my, pt);
 	this->spinner->render(this->minecraft, mx, my);
 }
+
 void PlayScreen::init() {
 	this->header = new Touch::THeader(0, this->field_118 == ELEVEN ? "Play" : "Realms");
 	this->backButton = new Touch::TButton(1, "Back", 0);
@@ -350,7 +377,7 @@ void PlayScreen::init() {
 		}
 	}
 
-	if((uint32_t)(this->field_114 - 3) <= 1 || this->field_114 == SIX || this->field_114 == SEVEN) { //67 leaks
+	if((uint32_t)(this->field_114 - 3) <= 1 || this->field_114 == SIX || this->field_114 == SEVEN) {
 		this->updateMCOStatus();
 		this->updateMCOServerList();
 	}
@@ -384,10 +411,12 @@ void PlayScreen::setupPositions() {
 	this->field_214.get()->setupPositions();
 	this->frame->setSize(this->field_214.get()->width + 6, this->field_214.get()->height + 6);
 }
+
 bool_t PlayScreen::handleBackEvent(bool_t a2) {
 	if(!a2) this->closeScreen();
 	return 1;
 }
+
 void PlayScreen::tick() {
 	if(this->field_50) {
 		this->buildLocalServerList();
@@ -428,6 +457,7 @@ void PlayScreen::tick() {
 
 	Screen::tick();
 }
+
 void PlayScreen::onMojangConnectorStatus(MojangConnectionStatus a2) {
 	if((uint32_t)(this->field_114 - 11) > 1) {
 		if(a2 == MojangConnectionStatus::STATUS_1) {
@@ -444,6 +474,7 @@ void PlayScreen::onMojangConnectorStatus(MojangConnectionStatus a2) {
 		this->updateMCOServerList();
 	}
 }
+
 void PlayScreen::buttonClicked(Button* a2) {
 	if(a2 == this->backButton) {
 		this->buildLocalServerList();
@@ -480,13 +511,15 @@ void PlayScreen::buttonClicked(Button* a2) {
 		}
 	} else if(a2 == this->field_B4) {
 		this->field_51 = 1;
-	}else if(a2 == this->externalButton){
+	} else if(a2 == this->externalButton){
 		this->minecraft->setScreen(new AddExternalServerScreen());
 	}
 }
+
 void PlayScreen::mouseClicked(int32_t a2, int32_t a3, int32_t a4) {
 	Screen::mouseClicked(a2, a3, a4);
 }
+
 void PlayScreen::mouseReleased(int32_t a2, int32_t a3, int32_t a4) {
 	Screen::mouseReleased(a2, a3, a4);
 }

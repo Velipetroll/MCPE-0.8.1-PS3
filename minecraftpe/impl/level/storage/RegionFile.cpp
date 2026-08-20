@@ -1,5 +1,13 @@
 #include <level/storage/RegionFile.hpp>
 #include <BitStream.h>
+#include <string.h>
+#include <stdio.h>
+
+#if defined(__PS3__) || defined(__PPU__) || (defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
+#define BSWAP32(x) __builtin_bswap32(x)
+#else
+#define BSWAP32(x) (x)
+#endif
 
 RegionFile::RegionFile(const std::string& a2) {
 	this->fileRaw = 0;
@@ -10,122 +18,127 @@ RegionFile::RegionFile(const std::string& a2) {
 	this->bytes4096_2 = new int8_t[4096];
 	memset(this->bytes4096_2, 0, 4096);
 }
+
 void RegionFile::close() {
 	if(this->fileRaw) {
 		fclose(this->fileRaw);
 		this->fileRaw = 0;
 	}
 }
-bool_t RegionFile::open() {
-	FILE* file; // r0
-	int32_t v3; // r5
-	int32_t v4; // r3
-	int32_t v5; // r11
-	int32_t v6; // r10
-	int32_t i; // r7
-	FILE* result; // r0
-	int32_t v9; // [sp+4h] [bp-2Ch] BYREF
 
+bool_t RegionFile::open() {
 	this->close();
 	memset(this->locTable, 0, 4096u);
-	file = fopen(this->path2file.c_str(), "r+b");
+	FILE* file = fopen(this->path2file.c_str(), "r+b");
 	this->fileRaw = file;
-	if(file) // file_exists
+	if(file) // Archivo existente
 	{
 		fread(this->locTable, 4u, 1024u, file);
-		v3 = 0;
-		v9 = 0;
+
+		// CORRECCIÓN PS3: Invertimos los 1024 punteros de Chunks de Little a Big Endian
+		for(int j = 0; j < 1024; ++j) {
+			this->locTable[j] = BSWAP32(this->locTable[j]);
+		}
+
+		int32_t v3 = 0;
+		int32_t v9 = 0;
 		this->stdMap[v9] = 0;
 		do {
-			v4 = this->locTable[v3];
+			int32_t v4 = this->locTable[v3];
 			if(v4) {
-				v5 = v4 >> 8;
-				v6 = (uint8_t)v4;
-				for(i = 0; i < v6; ++i) {
+				int32_t v5 = v4 >> 8;
+				int32_t v6 = (uint8_t)v4;
+				for(int32_t i = 0; i < v6; ++i) {
 					v9 = i + v5;
 					this->stdMap[v9] = 0;
 				}
 			}
 			++v3;
 		} while(v3 != 1024);
-	} else {
-		result = fopen(this->path2file.c_str(), "w+b");
+	} else { // Archivo nuevo
+		FILE* result = fopen(this->path2file.c_str(), "w+b");
 		this->fileRaw = result;
 		if(!result) {
 			return 0;
 		}
 		fwrite(this->locTable, 4u, 1024u, result);
-		v9 = 0;
+		int32_t v9 = 0;
 		this->stdMap[v9] = 0;
 	}
 	return this->fileRaw != 0;
 }
-bool_t RegionFile::readChunk(int32_t chunkX, int32_t chunkZ, RakNet::BitStream** a4) {
-	int32_t result; // r0
-	FILE* fileRaw; // r3
-	uint8_t* v8; // r7
-	int32_t n; // [sp+4h] [bp-1Ch] OVERLAPPED BYREF
-	int32_t useless; // [sp+8h] [bp-18h]
 
-	n = chunkX;
-	useless = chunkZ;
-	result = this->locTable[32 * chunkZ + chunkX];
+bool_t RegionFile::readChunk(int32_t chunkX, int32_t chunkZ, RakNet::BitStream** a4) {
+	if (chunkX < 0 || chunkX >= 32 || chunkZ < 0 || chunkZ >= 32) return 0;
+	if (!this->fileRaw) return 0;
+
+	int32_t result = this->locTable[32 * chunkZ + chunkX];
 	if(result) {
-		fseek(this->fileRaw, result >> 8 << 12, 0);
-		fileRaw = this->fileRaw;
-		n = 0;
-		fread(&n, 4u, 1u, fileRaw);
-		n -= 4;
-		v8 = new uint8_t[n];
-		fread(v8, 1u, n, this->fileRaw);
+		int32_t sectorOffset = result >> 8;
+		fseek(this->fileRaw, sectorOffset << 12, 0); // sector * 4096
+
+		int32_t n = 0;
+		if (fread(&n, 4u, 1u, this->fileRaw) != 1) return 0;
+		n = BSWAP32(n); // Convertimos el tamaño del chunk
+
+		// BLINDAJE CRÍTICO: Si 'n' es <= 4, el chunk está vacío o corrupto.
+		if(n <= 4 || n > 1024 * 1024) {
+			return 0;
+		}
+
+		n -= 4; // Restamos el header
+		uint8_t* v8 = new (std::nothrow) uint8_t[n];
+		if (!v8) return 0;
+
+		int32_t bytesRead = fread(v8, 1u, n, this->fileRaw);
+		if (bytesRead != n) {
+			delete[] v8;
+			return 0;
+		}
+
 		*a4 = new RakNet::BitStream(v8, n, 0);
 		return 1;
 	}
 	return 0;
 }
+
 bool_t RegionFile::write(int32_t a2, RakNet::BitStream& a3) {
+	if (!this->fileRaw) return 0;
 	fseek(this->fileRaw, a2 << 12, 0);
 	int32_t v6 = a3.GetNumberOfBytesUsed() + 4;
-	fwrite(&v6, 4u, 1u, this->fileRaw);
+	int32_t v6_le = BSWAP32(v6); // Escribimos en Little-Endian para compatibilidad
+	fwrite(&v6_le, 4u, 1u, this->fileRaw);
 	fwrite(a3.GetData(), 1u, a3.GetNumberOfBytesUsed(), this->fileRaw);
 	return 1;
 }
-bool_t RegionFile::writeChunk(int32_t chunkX, int32_t chunkZ, RakNet::BitStream& a4) {
-	int32_t regionIndex; // r10
-	int32_t locTableEntry; // r7
-	int32_t v8; // r5
-	int32_t firstByteOfLocTableEntry; // r8
-	int32_t v10; // r7
-	int32_t v11; // r6
-	int32_t v13; // r2
-	int32_t v14; // r11
-	int32_t v16; // r6
-	int32_t v17; // r3
-	int32_t v22; // r7
-	int32_t i; // r12
-	int32_t v24; // r7
-	int32_t v26; // [sp+4h] [bp-3Ch]
-	int32_t v28; // [sp+8h] [bp-38h]
-	int32_t off; // [sp+Ch] [bp-34h]
-	int32_t v30; // [sp+14h] [bp-2Ch] BYREF
 
-	regionIndex = chunkX + 32 * chunkZ;
-	off = regionIndex;
-	locTableEntry = this->locTable[regionIndex];
-	v8 = ((int32_t)(a4.GetNumberOfBytesUsed() + 4) >> 12) + 1;
+bool_t RegionFile::writeChunk(int32_t chunkX, int32_t chunkZ, RakNet::BitStream& a4) {
+	if (!this->fileRaw) return 0;
+	int32_t regionIndex = chunkX + 32 * chunkZ;
+	int32_t off = regionIndex;
+	int32_t locTableEntry = this->locTable[regionIndex];
+	int32_t v8 = ((int32_t)(a4.GetNumberOfBytesUsed() + 4) >> 12) + 1;
+
 	if(v8 <= 256) {
-		firstByteOfLocTableEntry = (uint8_t)locTableEntry;
-		v10 = locTableEntry >> 8;
+		int32_t firstByteOfLocTableEntry = (uint8_t)locTableEntry;
+		int32_t v10 = locTableEntry >> 8;
+		int32_t v11 = 0;
+		int32_t v13 = 1;
+		int32_t v14 = 0;
+		int32_t v16 = 0;
+		int32_t v22 = 0;
+		int32_t v24 = 0;
+		int32_t v26 = 0;
+		int32_t v30 = 0;
+		int32_t entry_le = 0;
+
 		if(v10) {
 			if(firstByteOfLocTableEntry == v8) {
 				this->write(v10, a4);
 				return 1;
 			}
-			v11 = 0;
-		} else {
-			v11 = 0;
 		}
-		v13 = 1;
+
 		while(v11 < firstByteOfLocTableEntry) {
 			v30 = v11 + v10;
 			v26 = v13;
@@ -133,11 +146,10 @@ bool_t RegionFile::writeChunk(int32_t chunkX, int32_t chunkZ, RakNet::BitStream&
 			v13 = v26;
 			++v11;
 		}
-		v14 = 0;
-		v16 = 0;
+
 		while(1) {
-			v17 = v16 + v14;
-			auto&& p = this->stdMap.find(v17); //TODO check, it was inlined here
+			int32_t v17 = v16 + v14;
+			auto&& p = this->stdMap.find(v17);
 			if(p == this->stdMap.end()) {
 				break;
 			}
@@ -151,27 +163,29 @@ bool_t RegionFile::writeChunk(int32_t chunkX, int32_t chunkZ, RakNet::BitStream&
 				v14 = 0;
 			}
 		}
-		v22 = 0;
+
 		fseek(this->fileRaw, 0, 2);
-		for(i = v8 - v14; v22 < i; i = v28) {
-			v28 = i;
+		for(int32_t i = v8 - v14; v22 < i;) {
+			int32_t v28 = i;
 			fwrite(this->bytes4096_2, 4u, 0x400u, this->fileRaw);
 			v30 = v22 + v16;
 			++v22;
 			this->stdMap[v30] = 1;
+			i = v28;
 		}
-LABEL_25:
-		v24 = 0;
+
+		LABEL_25:
 		this->locTable[regionIndex] = v8 | (v16 << 8);
 		do {
 			v30 = v24 + v16;
 			++v24;
 			this->stdMap[v30] = 0;
-		}
-		while ( v24 < v8 );
+		} while ( v24 < v8 );
+
 		this->write(v16, a4);
 		fseek(this->fileRaw, off * 4, 0);
-		fwrite(&this->locTable[off], 4u, 1u, this->fileRaw);
+		entry_le = BSWAP32(this->locTable[off]); // Guardamos en Little-Endian
+		fwrite(&entry_le, 4u, 1u, this->fileRaw);
 		return 1;
 	}
 	return 0;

@@ -4,18 +4,19 @@
 #include <time.h>
 #include <util/Util.hpp>
 #include <network/mco/CurlRestRequestJob.hpp>
+#include <unistd.h> // Añadido para usleep en PS3
 
 std::shared_ptr<RestRequestJob> RestRequestJob::CreateJob(RestRequestType a2, std::shared_ptr<RestService> a3, Minecraft* a4) {
-#ifdef ANDROID
-	DEBUGMSG("RestRequestJob::CreateJob(android not implemented\n");
+	#ifdef ANDROID
+	printf("RestRequestJob::CreateJob(android not implemented\n");
 	return std::shared_ptr<RestRequestJob>();
-#else
+	#else
 	std::shared_ptr<RestRequestJob> ret(new CurlRestRequestJob());
-	ret->field_8 = ret; //TODO check is this actually how it is assigned
+	ret->field_8 = ret;
 	ret->restService = a3;
 	ret->requestType = a2;
 	return ret;
-#endif
+	#endif
 }
 
 RestRequestJob::RestRequestJob(){
@@ -53,12 +54,20 @@ void RestRequestJob::stop() {
 }
 void RestRequestJob::run() {
 	this->trySetStatus(JS_STARTED);
+	// ==========================================
+	// RUTA PARA PS3 (Pausa compatible)
+	// ==========================================
+	#ifdef __PS3__
+	usleep(1000000); // 1 segundo
+	// ==========================================
+	// RUTA ORIGINAL
+	// ==========================================
+	#else
 	timespec t{1, 0};
 	nanosleep(&t, 0);
+	#endif
 	this->trySetStatus(JS_FINISHED);
 }
 void RestRequestJob::finish(){
-	//copyRawCharArrayInside(&v6, "Yey"); Nay
-	printf("RestRequestJob::finish - not implemented\n"); //TODO
-
+	printf("RestRequestJob::finish - not implemented\n");
 }

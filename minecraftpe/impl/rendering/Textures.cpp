@@ -1,3 +1,4 @@
+
 #include <rendering/Textures.hpp>
 #include <rendering/textures/DynamicTexture.hpp>
 #include <Options.hpp>
@@ -15,26 +16,30 @@ Textures::Textures(Options* options, AppPlatform* platform){
 
 void Textures::_loadTexImage(const ImageData& data){
 	int32_t v3 = data.field_C;
-	printf("%d\n", (uint32_t)(v3-5));
+
+	// FIX CORREGIDO: Se elimina la inversión manual de canales (swapped_pixels).
+	// unigl.cpp ya lee el formato original RGBA y lo transforma correctamente para RSX.
+	const void* upload_pixels = data.pixels;
+
 	if((uint32_t)(v3-5) > 2){
 		switch(v3){
 			case 2:
-				glTexImage2D(GL_TEXTURE_2D, data.lod, GL_RGB, data.width, data.height, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, data.pixels);
+				glTexImage2D(GL_TEXTURE_2D, data.lod, GL_RGB, data.width, data.height, 0, GL_RGB, GL_UNSIGNED_SHORT_5_6_5, upload_pixels);
 				break;
 			case 4:
-				glTexImage2D(GL_TEXTURE_2D, data.lod, GL_RGBA, data.width, data.height, 0, GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4, data.pixels);
+				glTexImage2D(GL_TEXTURE_2D, data.lod, GL_RGBA, data.width, data.height, 0, GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4, upload_pixels);
 				break;
 			case 3:
-				glTexImage2D(GL_TEXTURE_2D, data.lod, GL_RGBA, data.width, data.height, 0, GL_RGBA, GL_UNSIGNED_SHORT_5_5_5_1, data.pixels);
+				glTexImage2D(GL_TEXTURE_2D, data.lod, GL_RGBA, data.width, data.height, 0, GL_RGBA, GL_UNSIGNED_SHORT_5_5_5_1, upload_pixels);
 				break;
 			default:
 				if(v3){
 					if(v3 == 1){
-						glTexImage2D(GL_TEXTURE_2D, data.lod, GL_RGB, data.width, data.height, 0, GL_RGB, GL_UNSIGNED_BYTE, data.pixels);
+						glTexImage2D(GL_TEXTURE_2D, data.lod, GL_RGB, data.width, data.height, 0, GL_RGB, GL_UNSIGNED_BYTE, upload_pixels);
 					}
 				}
 				else{
-					glTexImage2D(GL_TEXTURE_2D, data.lod, GL_RGBA, data.width, data.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data.pixels);
+					glTexImage2D(GL_TEXTURE_2D, data.lod, GL_RGBA, data.width, data.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, upload_pixels);
 				}
 				break;
 		}
@@ -75,7 +80,7 @@ int32_t Textures::assignTexture(const std::string& s, TextureData& d, bool_t b){
 			this->_loadTexImage(data); //creates a copy
 		}
 
-		 glTexParameteri(GL_TEXTURE_2D, 0x2801u, 9986);
+		glTexParameteri(GL_TEXTURE_2D, 0x2801u, 9986);
 	}
 
 	TextureData& td = this->textures[s];
@@ -103,7 +108,6 @@ void Textures::bind(uint32_t t){
 }
 
 void Textures::clear(bool_t a2){
-	//XXX pain (need to check)
 	for(auto&& p: this->textures) {
 		if(p.second.glTexId) {
 			glDeleteTextures(1, &p.second.glTexId);
@@ -122,16 +126,24 @@ void Textures::clear(bool_t a2){
 	}
 }
 
+// FIX PS3: Extraemos las variables desplazando los bits correctamente para arreglar pasto, agua y hojas.
 int32_t Textures::crispBlend(int32_t a, int32_t b){
-	int32_t v3 = b >> 24;
-	int32_t v4 = a >> 24;
-	int32_t v5 = (a >> 24) + (b >> 24);
-	if(v5) v5 = 255;
-	else v3 = 1;
+	uint8_t a_r = (a >> 24) & 0xFF; uint8_t a_g = (a >> 16) & 0xFF; uint8_t a_b = (a >> 8) & 0xFF; uint8_t a_a = a & 0xFF;
+	uint8_t b_r = (b >> 24) & 0xFF; uint8_t b_g = (b >> 16) & 0xFF; uint8_t b_b = (b >> 8) & 0xFF; uint8_t b_a = b & 0xFF;
 
-	if(!((a >> 24) + (b >> 24))) v4 = v3;
+	int32_t w1 = b_a;
+	int32_t w2 = a_a;
+	int32_t w3 = w1 + w2;
 
-	return ((int32_t)((b&0xff) * v3 + v4 * (a&0xff)) / (int32_t)(v4 + v3)) | (v5 << 24) | (((int32_t)(((b&0xff0000) >> 16) * v3 + v4 * ((a&0xff0000) >> 16)) / (int32_t)(v4 + v3)) << 16) | (((int32_t)(v3 * ((b&0xff00) >> 8) + v4 * ((a&0xff00) >> 8)) / (int32_t)(v4 + v3)) << 8);
+	if(w3) w3 = 255; else w1 = 1;
+	if(!(a_a + b_a)) w2 = w1;
+
+	uint8_t res_r = (b_r * w1 + w2 * a_r) / (w1 + w2);
+	uint8_t res_g = (b_g * w1 + w2 * a_g) / (w1 + w2);
+	uint8_t res_b = (b_b * w1 + w2 * a_b) / (w1 + w2);
+	uint8_t res_a = w3;
+
+	return (res_r << 24) | (res_g << 16) | (res_b << 8) | res_a;
 }
 
 int32_t Textures::loadAndBindTexture(const std::string& s){
@@ -147,7 +159,6 @@ TextureData* Textures::loadAndGetTextureData(const std::string& s){
 }
 
 int32_t Textures::loadTexture(const std::string& s, bool_t a, bool_t b){
-	//XXX pain (need to check)
 	if(this->textures.count(s) <= 0){
 		TextureData data = this->platform->loadTexture(s, a);
 		return this->assignTexture(s, data, b);
@@ -155,14 +166,23 @@ int32_t Textures::loadTexture(const std::string& s, bool_t a, bool_t b){
 		if(this->textures[s].glTexId) return this->textures[s].glTexId;
 		return this->assignTexture(s, this->textures[s], b);
 	}
-
 }
 
 void Textures::reloadAll(){}
 
+// FIX PS3: Igualmente arreglamos Endianness del alfa para texturas suaves
 int32_t Textures::smoothBlend(int32_t a, int32_t b){
-	return ((int32_t)((a & 0xFEFEFE) + (b & 0xFEFEFE)) >> 1) + ((int32_t)((b >> 24) + (a >> 24)) >> 1 << 24);
+	uint8_t a_r = (a >> 24) & 0xFF; uint8_t a_g = (a >> 16) & 0xFF; uint8_t a_b = (a >> 8) & 0xFF; uint8_t a_a = a & 0xFF;
+	uint8_t b_r = (b >> 24) & 0xFF; uint8_t b_g = (b >> 16) & 0xFF; uint8_t b_b = (b >> 8) & 0xFF; uint8_t b_a = b & 0xFF;
+
+	uint8_t res_r = (a_r + b_r) >> 1;
+	uint8_t res_g = (a_g + b_g) >> 1;
+	uint8_t res_b = (a_b + b_b) >> 1;
+	uint8_t res_a = (a_a + b_a) >> 1;
+
+	return (res_r << 24) | (res_g << 16) | (res_b << 8) | res_a;
 }
+
 static char_t byte_D6E06B78[0x1000];
 
 void Textures::tick(bool_t a2) {
@@ -173,35 +193,43 @@ void Textures::tick(bool_t a2) {
 		for(int32_t i = 0; i < this->dynamicTextures.size(); ++i) {
 			DynamicTexture* v7 = this->dynamicTextures[i];
 			v7->bindTexture(this);
-			if(v7->field_18 == 1) {
-				glTexSubImage2D(0xDE1u, 0, (int32_t)(float)(v7->uv.minX * v7->uv.width), (int32_t)(float)(v7->uv.minY * v7->uv.height), (int32_t)(float)((float)((float)(v7->uv.maxX - v7->uv.minX) * v7->uv.width) + 0.49), (int32_t)(float)((float)((float)(v7->uv.maxY - v7->uv.minY) * v7->uv.height) + 0.49) + 1, 0x1908u, 0x1401u, v7->data);
-			} else if(v7->field_18 == 2) {
+
+			if(v7->field_18 == 1) { // LAVA / AGUA
+				int width = (int32_t)(float)((float)((float)(v7->uv.maxX - v7->uv.minX) * v7->uv.width) + 0.49);
+				int height = (int32_t)(float)((float)((float)(v7->uv.maxY - v7->uv.minY) * v7->uv.height) + 0.49) + 1;
+				int total_bytes = width * height * 4;
+
+				// FIX CORREGIDO: Se ha eliminado el swap para PS3. unigl.cpp se encarga.
+				glTexSubImage2D(0xDE1u, 0, (int32_t)(float)(v7->uv.minX * v7->uv.width), (int32_t)(float)(v7->uv.minY * v7->uv.height), width, height, 0x1908u, 0x1401u, v7->data);
+
+			} else if(v7->field_18 == 2) { // FIRE / PORTAL
 				uint8_t* data = v7->data;
-				char_t* v10 = &byte_D6E06B78[0x40]; //TODO figure out what is this
+				char_t* v10 = &byte_D6E06B78[0x40];
 				int32_t v11 = 0;
 				do {
 					memcpy(v10 - 0x40, &data[v11], 0x40);
-					memcpy(v10, &data[v11], 0x40); //0.7.2 has memcpys here
+					memcpy(v10, &data[v11], 0x40);
 					v10 += 0x80;
 					v11 = ((int16_t)v11 + 64) & 0x3FF;
 				}
 				while ( v10 < &byte_D6E06B78[0x1000] );
-				glTexSubImage2D(0xDE1u, 0, (int)(float)(v7->uv.minX * v7->uv.width), (int)(float)(v7->uv.minY * v7->uv.height), 2 * (int)(float)((float)((float)(v7->uv.maxX - v7->uv.minX) * v7->uv.width) + 0.49), 2 * (int)(float)((float)((float)(v7->uv.maxY - v7->uv.minY) * v7->uv.height) + 0.49), 0x1908u, 0x1401u, byte_D6E06B78);
+
+				// FIX CORREGIDO: Se ha eliminado el swap manual del array byte_D6E06B78
+				int width2 = 2 * (int)(float)((float)((float)(v7->uv.maxX - v7->uv.minX) * v7->uv.width) + 0.49);
+				int height2 = 2 * (int)(float)((float)((float)(v7->uv.maxY - v7->uv.minY) * v7->uv.height) + 0.49);
+				glTexSubImage2D(0xDE1u, 0, (int)(float)(v7->uv.minX * v7->uv.width), (int)(float)(v7->uv.minY * v7->uv.height), width2, height2, 0x1908u, 0x1401u, byte_D6E06B78);
 			}
 		}
-
 	}
-	//TODO dynamic texture ticking
 }
 
 Textures::~Textures(){
 	this->clear(1);
-
 	for(int v2 = 0; v2 < this->dynamicTextures.size(); ++v2) {
 		DynamicTexture* v3 = this->dynamicTextures[v2];
 		if(v3) {
 			delete v3;
 		}
 	}
-
 }
+

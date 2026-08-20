@@ -8,17 +8,28 @@
 #else
 #include <sys/socket.h>
 #endif
+
 struct ConnectedClient;
 struct Minecraft;
 struct CameraEntity;
 struct Packet;
+
 struct CommandServer
 {
 	static std::string Ok, Fail;
 	bool_t initialized;
 	int8_t field_1, field_2, field_3;
 	int32_t _socket;
+
+	// ==========================================
+	// RUTA PARA PS3 (Evitamos el "flexible array")
+	// ==========================================
+	#ifdef __PS3__
+	char field_8[16];
+	#else
 	sockaddr field_8;
+	#endif
+
 	Minecraft* minecraft;
 	OffsetPosTranslator posTranslator;
 	int32_t* checkpoint;

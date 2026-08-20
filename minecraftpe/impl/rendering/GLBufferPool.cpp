@@ -3,7 +3,6 @@ GLBufferPool glBufferPool(10);
 
 GLBufferPool::GLBufferPool(unsigned int reserveCnt) {
 	this->reserveCnt = reserveCnt;
-
 }
 
 GLBufferPool::~GLBufferPool(){
@@ -23,13 +22,14 @@ bool_t GLBufferPool::trim(){
 }
 
 void GLBufferPool::release(uint32_t n){
-	uint32_t v4;
+	// FIX: Se eliminó la variable v4 sin inicializar.
+	// Ahora borra correctamente el ID 'n' del set de usados.
 	this->unusedBuffers.push_back(n);
-	this->usedBuffers.erase(v4);
+	this->usedBuffers.erase(n);
 }
 
 GLuint GLBufferPool::get(){
-if(this->unusedBuffers.size() < this->reserveCnt) {
+	if(this->unusedBuffers.size() < this->reserveCnt) {
 		while(this->unusedBuffers.size() < this->reserveCnt) {
 			unsigned int bf;
 			glGenBuffers(1, &bf);

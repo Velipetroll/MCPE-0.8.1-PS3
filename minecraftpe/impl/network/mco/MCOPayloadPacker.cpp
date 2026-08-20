@@ -1,10 +1,18 @@
 #include <network/mco/MCOPayloadPacker.hpp>
 #include <util/Random.hpp>
 #include <BitStream.h>
+#include <stdio.h> // Añadido para el printf
+
 MCOPayloadPacker::MCOPayloadPacker(Random& a2) {
 	this->random = &a2;
 }
-std::string MCOPayloadPacker::readControlPackage(char_t*, uint32_t);
+
+// ARREGLADO: Quitamos el punto y coma y le damos un cuerpo que devuelve un texto vacio
+std::string MCOPayloadPacker::readControlPackage(char_t*, uint32_t) {
+	printf("MCOPayloadPacker::readControlPackage - not implemented\n");
+	return "";
+}
+
 std::string MCOPayloadPacker::writeBitStream(int64_t a3, std::string a4) {
 	unsigned int v14 = this->random->genrand_int32();
 	unsigned int v15 = this->random->genrand_int32();
@@ -21,4 +29,9 @@ std::string MCOPayloadPacker::writeBitStream(int64_t a3, std::string a4) {
 	v19.Write<unsigned int>(v17);
 	return std::string((const char*) v19.GetData(), v19.GetNumberOfBytesUsed());
 }
-std::string MCOPayloadPacker::writeControllPackage(const ControllerData&);
+
+// ARREGLADO: Quitamos el punto y coma y le damos un cuerpo
+std::string MCOPayloadPacker::writeControllPackage(const ControllerData&) {
+	printf("MCOPayloadPacker::writeControllPackage - not implemented\n");
+	return "";
+}

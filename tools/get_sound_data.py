@@ -1,4 +1,6 @@
+from __future__ import print_function
 import sys
+
 lib_sound_data = {
 	"PCM_fuse": 0x002E2650-0x1000,
 	"PCM_eat3": 0x0031F5AA-0x1000,
@@ -107,35 +109,40 @@ lib_sound_data = {
 	"PCM_cloth2": 0x00930144-0x1000,
 	"PCM_cloth1": 0x0093476E-0x1000
 }
-if(len(sys.argv) < 2):
-	print("Usage: ", sys.argv[0] if len(sys.argv) == 1 else "get_sound_data.py", "<path/to/libminecraftpe.so>")
-	exit(0);
+
+if len(sys.argv) < 2:
+	script_name = sys.argv[0] if len(sys.argv) > 0 else "get_sound_data.py"
+	print("Usage: ", script_name, "<path/to/libminecraftpe.so>")
+	exit(0)
 
 with open(sys.argv[1], "rb") as f:
-	allbytes = f.read()
+	# Convertimos a bytearray para que sea compatible con Python 2 y 3 (devuelve enteros al indexar)
+	allbytes = bytearray(f.read())
 
 content = """
 #include <pcm_data.h>
 #ifndef DYNAMICSOUNDS
-""";
+"""
+
 for k, v in lib_sound_data.items():
+	vv = allbytes[v+12:v+16]
+	cc = allbytes[v:v+4]
+	bps = allbytes[v+4:v+8]
+	sr = allbytes[v+8:v+12]
 
-	vv = allbytes[v+12:v+16];
-	cc = allbytes[v:v+4];
-	bps = allbytes[v+4:v+8];
-	sr = allbytes[v+8:v+12];
-	datalen = vv[0] | (vv[1] << 8) | (vv[2] << 16) | (vv[3] << 24);
-	channels = cc[0] | (cc[1] << 8) | (cc[2] << 16) | (cc[3] << 24);
-	bpsv = bps[0] | (bps[1] << 8) | (bps[2] << 16) | (bps[3] << 24);
-	srv = sr[0] | (sr[1] << 8) | (sr[2] << 16) | (sr[3] << 24);
+	datalen = vv[0] | (vv[1] << 8) | (vv[2] << 16) | (vv[3] << 24)
+	channels = cc[0] | (cc[1] << 8) | (cc[2] << 16) | (cc[3] << 24)
+	bpsv = bps[0] | (bps[1] << 8) | (bps[2] << 16) | (bps[3] << 24)
+	srv = sr[0] | (sr[1] << 8) | (sr[2] << 16) | (sr[3] << 24)
 
-	content += "uint8_t "+k+"[] = {";
+	content += "uint8_t "+k+"[] = {"
 	content += ",".join(list(map(hex, allbytes[v:v+16+bpsv*channels*datalen])))
 	content += "};\n"
 
-	#data_length = read_int_from_bytes(bytes, item[1] + 12)
-content += "#endif";
+content += "#endif"
+
 with open("pcm_data.c", "w") as f:
-	f.write(content);
+	f.write(content)
+
 print()
 print("- Sounds were written to pcm_data.c: move this file into the needed directory -")

@@ -5,3 +5,10 @@ build/
 CMakeLists.txt.user
 assets/*
 sounds/*
+*.apk
+build/
+mcpe_apk/
+*.pkg
+*.elf
+*.self
+minecraftpe/impl/pcm_data.c

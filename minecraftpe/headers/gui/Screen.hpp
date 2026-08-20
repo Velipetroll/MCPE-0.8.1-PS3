@@ -19,6 +19,11 @@ struct Screen : public GuiComponent{
 	struct Font* font;
 	struct Button* lastPressedButton;
 
+	// Métodos auxiliares de navegación (No alteran el tamaño en memoria del struct)
+	void navigateDirection(int dir);
+	void triggerSelectedButton();
+	void renderSelectionBox();
+
 	void updateTabButtonSelection();
 	void init(struct Minecraft*, int32_t, int32_t);
 	void setSize(int32_t w, int32_t h);
@@ -47,7 +52,7 @@ struct Screen : public GuiComponent{
 	virtual void lostFocus();
 	virtual void toGUICoordinate(int32_t& x, int32_t& y);
 	virtual void feedMCOEvent(MCOEvent);
-	virtual bool_t supppressedBySubWindow(); //mojang moment
+	virtual bool_t supppressedBySubWindow();
 	virtual void onTextBoxUpdated(int32_t);
 	virtual void onMojangConnectorStatus(MojangConnectionStatus);
 	virtual void setTextboxText(const std::string&);

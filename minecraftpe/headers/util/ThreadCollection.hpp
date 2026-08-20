@@ -2,19 +2,22 @@
 #include <_types.h>
 #include <deque>
 #include <vector>
+#include <memory>
+
+#ifndef __PS3__
 #include <mutex>
 #include <thread>
-#include <memory>
 #include <condition_variable>
+#endif
 
 struct Job;
 struct ThreadCollection
 {
 	std::vector<std::thread> threads;
 	std::deque<std::shared_ptr<Job>> field_C;
-	std::deque<std::shared_ptr<Job>> field_34; //maybe endedJobs
+	std::deque<std::shared_ptr<Job>> field_34;
 	std::mutex mutex;
-	std::mutex field_60; //maybe endedJobsMutex?
+	std::mutex field_60;
 	std::condition_variable field_64;
 	bool isStopped;
 

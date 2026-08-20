@@ -1,11 +1,19 @@
 #include <network/mco/MCOServerListItem.hpp>
 
-MCOServerListItem::MCOServerListItem(const MCOServerListItem&);
-MCOServerListItem::MCOServerListItem(MCOServerListItem&&);
+// ARREGLADO: Quitamos los punto y coma y les damos un cuerpo real
+MCOServerListItem::MCOServerListItem(const MCOServerListItem& a2) {
+	*this = a2;
+}
+
+MCOServerListItem::MCOServerListItem(MCOServerListItem&& a2) {
+	*this = a2;
+}
+
 MCOServerListItem::MCOServerListItem() {
 	this->worldName = "My World";
 	this->gamemodeName = "creative";
 }
+
 MCOServerListItem& MCOServerListItem::operator=(const MCOServerListItem& a2) {
 	this->field_0 = a2.field_0;
 	this->field_4 = a2.field_4;
@@ -19,6 +27,12 @@ MCOServerListItem& MCOServerListItem::operator=(const MCOServerListItem& a2) {
 	this->field_2C = a2.field_2C;
 	return *this;
 }
-MCOServerListItem& MCOServerListItem::operator=(MCOServerListItem&&);
+
+// ARREGLADO: Quitamos el punto y coma
+MCOServerListItem& MCOServerListItem::operator=(MCOServerListItem&& a2) {
+	*this = a2;
+	return *this;
+}
+
 MCOServerListItem::~MCOServerListItem() {
 }

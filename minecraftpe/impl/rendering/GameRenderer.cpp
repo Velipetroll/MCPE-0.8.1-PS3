@@ -25,10 +25,15 @@
 #include <tile/material/Material.hpp>
 #include <unigl.h>
 
+// FIX COMPILACIÓN: Le decimos al compilador de C++ que confíe en que esta función
+// de OpenGL existe en unigl.cpp, ya que falta en la cabecera unigl.h
+extern "C" void glOrthof(float l, float r, float b, float t, float n, float f);
+
 int32_t t_keepPic = -1;
+
 GameRenderer::GameRenderer(struct Minecraft* a2)
-	: field_74(0, 0, 0, 0)
-	, field_84(0, 0, 0, 0) {
+: field_74(0, 0, 0, 0)
+, field_84(0, 0, 0, 0) {
 	this->minecraft = a2;
 	this->field_C = 0;
 	this->viewVector.x = 1;
@@ -80,12 +85,13 @@ GameRenderer::GameRenderer(struct Minecraft* a2)
 	entityRenderer->itemInHandRenderer = this->itemInHandRenderer;
 	entityRenderer->textures = a2->texturesPtr;
 }
+
 void GameRenderer::bobHurt(float a2) {
-	Player* viewEntityMaybe; // r4
-	int hurtTime;			 // s17
-	float v5;				 // r0
-	float v6;				 // r4
-	float v7;				 // s16
+	Player* viewEntityMaybe;
+	int hurtTime;
+	float v5;
+	float v6;
+	float v7;
 
 	viewEntityMaybe = (Player*)this->minecraft->viewEntityMaybe;
 	hurtTime = viewEntityMaybe->hurtTime;
@@ -101,15 +107,16 @@ void GameRenderer::bobHurt(float a2) {
 		glRotatef(v6, 0.0, 1.0, 0.0);
 	}
 }
+
 void GameRenderer::bobView(float a2) {
-	Player* viewEntityMaybe; // r3
-	float v5;				 // s16
-	float v6;				 // s17
-	GLfloat v7;				 // s19
-	float v8;				 // s18
-	float v9;				 // r0
-	float v10;				 // r0
-	float v11;				 // r0
+	Player* viewEntityMaybe;
+	float v5;
+	float v6;
+	GLfloat v7;
+	float v8;
+	float v9;
+	float v10;
+	float v11;
 
 	if(this->minecraft->viewEntityMaybe->isPlayer()) {
 		viewEntityMaybe = (Player*)this->minecraft->viewEntityMaybe;
@@ -126,11 +133,12 @@ void GameRenderer::bobView(float a2) {
 		glRotatef(v7, 1.0, 0.0, 0.0);
 	}
 }
+
 float GameRenderer::getFov(float a2, bool_t a3) {
-	float v4;			  // s16
-	Minecraft* minecraft; // r1
-	Mob* viewEntityMaybe; // r5
-	float v8;			  // s14
+	float v4;
+	Minecraft* minecraft;
+	Mob* viewEntityMaybe;
+	float v8;
 
 	v4 = 70.0;
 	minecraft = this->minecraft;
@@ -147,50 +155,51 @@ float GameRenderer::getFov(float a2, bool_t a3) {
 	}
 	return (float)(v4 + this->field_64) + (float)((float)(this->field_60 - this->field_64) * a2);
 }
+
 void GameRenderer::moveCameraToPlayer(float a2) {
-	Mob* viewEntityMaybe; // r4
-	float posX;			  // s19
-	float prevX;		  // s21
-	float posY;			  // s20
-	float prevY;		  // s22
-	float posZ;			  // s24
-	float prevZ;		  // s23
-	float v11;			  // s18
-	Level* v12;			  // r8
-	int v13;			  // r10
-	int v14;			  // r9
-	int v15;			  // r0
-	Level* v16;			  // r7
-	int v17;			  // r9
-	int v18;			  // r8
-	int v19;			  // r0
-	char v20;			  // r0
-	float v21;			  // r1
-	float v22;			  // r0
-	float v23;			  // s17
-	int v24;			  // r6
-	float v25;			  // s19
-	GLfloat v26;		  // s20
-	float v27;			  // r2
-	float v28;			  // s22
-	float yaw;			  // s20
-	float v30;			  // s23
-	float v31;			  // s21
-	float pitch;		  // s19
-	float v33;			  // s24
-	float v34;			  // s22
-	float v35;			  // s28
-	float v36;			  // s25
-	float v37;			  // s28
-	float v38;			  // s29
-	float v39;			  // s17
-	float v40;			  // s27
-	Level* level;		  // r8
-	float v42;			  // s26
-	float v43;			  // s25
-	float v44;			  // r0
-	Minecraft* minecraft; // r3
-	Minecraft* v46;		  // r3
+	Mob* viewEntityMaybe;
+	float posX;
+	float prevX;
+	float posY;
+	float prevY;
+	float posZ;
+	float prevZ;
+	float v11;
+	Level* v12;
+	int v13;
+	int v14;
+	int v15;
+	Level* v16;
+	int v17;
+	int v18;
+	int v19;
+	char v20;
+	float v21;
+	float v22;
+	float v23;
+	int v24;
+	float v25;
+	GLfloat v26;
+	float v27;
+	float v28;
+	float yaw;
+	float v30;
+	float v31;
+	float pitch;
+	float v33;
+	float v34;
+	float v35;
+	float v36;
+	float v37;
+	float v38;
+	float v39;
+	float v40;
+	Level* level;
+	float v42;
+	float v43;
+	float v44;
+	Minecraft* minecraft;
+	Minecraft* v46;
 
 	viewEntityMaybe = this->minecraft->viewEntityMaybe;
 	posX = viewEntityMaybe->posX;
@@ -219,7 +228,7 @@ void GameRenderer::moveCameraToPlayer(float a2) {
 			v22 = v25;
 			v21 = 0.0;
 			v27 = 1.0;
-LABEL_9:
+			LABEL_9:
 			glRotatef(v22, v21, v27, 0.0);
 			goto LABEL_17;
 		}
@@ -255,7 +264,7 @@ LABEL_9:
 		glRotatef(yaw - viewEntityMaybe->yaw, 0.0, 1.0, 0.0);
 		v21 = 1.0;
 		v22 = pitch - viewEntityMaybe->pitch;
-LABEL_16:
+		LABEL_16:
 		v27 = 0.0;
 		goto LABEL_9;
 	}
@@ -280,13 +289,14 @@ LABEL_16:
 		v22 = viewEntityMaybe->prevPitch + (float)((float)(viewEntityMaybe->pitch - viewEntityMaybe->prevPitch) * a2);
 		goto LABEL_16;
 	}
-LABEL_17:
+	LABEL_17:
 	if(!this->minecraft->options.field_F1) {
 		glRotatef(viewEntityMaybe->prevPitch + (float)((float)(viewEntityMaybe->pitch - viewEntityMaybe->prevPitch) * a2), 1.0, 0.0, 0.0);
 		glRotatef((float)(viewEntityMaybe->prevYaw + (float)((float)(viewEntityMaybe->yaw - viewEntityMaybe->prevYaw) * a2)) + 180.0, 0.0, 1.0, 0.0);
 	}
 	glTranslatef(0.0, v11, 0.0);
 }
+
 void GameRenderer::pick(float a2) {
 	if(this->minecraft) {
 		if(this->minecraft->levelRenderer) {
@@ -387,7 +397,7 @@ void GameRenderer::pick(float a2) {
 					float v42 = 0;
 					Entity* v43 = 0;
 					std::vector<Entity*>* ents = this->minecraft->level->getEntities(this->minecraft->viewEntityMaybe, AABB{v31 - 1, v32 - 1, v33 - 1, v34 + 1, v35 + 1, v37 + 1});
-					for(int v41 = 0; v41 < ents->size(); ++v41) {
+					for(size_t v41 = 0; v41 < ents->size(); ++v41) {
 						Entity* v47 = ents->at(v41);
 						if(v47->isPickable()) {
 							float v48 = v47->getPickRadius();
@@ -460,6 +470,7 @@ void GameRenderer::pick(float a2) {
 		}
 	}
 }
+
 void GameRenderer::render(float pt) {
 	int32_t v29;
 	if(this->minecraft->player) {
@@ -475,11 +486,9 @@ void GameRenderer::render(float pt) {
 			float v11 = v10 - v9;
 			this->field_9C = this->field_9C + (float)(v7 * 4.0);
 			this->field_A0 = this->field_A0 + (float)(v8 * 4.0);
-			bool_t invertMouse = v5->options.invertMouse;
 			if(v11 > 3.0) {
 				v11 = 3.0;
 			}
-			//v5->options.invertMouse;
 			int32_t v13;
 			if(v5->options.invertMouse) {
 				v13 = 1;
@@ -517,13 +526,13 @@ void GameRenderer::render(float pt) {
 		mx = mx * invGuiScale;
 		my = my * invGuiScale;
 	}
-LABEL_20:
+	LABEL_20:
 	this->enableScissorTest = 0;
 	int32_t v27;
 	if(this->minecraft->isLevelGenerated()) {
-		if(t_keepPic >= 0 || this->minecraft->currentScreen != 0 && !this->minecraft->currentScreen->renderGameBehind()) {
+		if(t_keepPic >= 0) {
 			v27 = 0;
-LABEL_30:
+			LABEL_30:
 			v29 = v27;
 			goto LABEL_34;
 		}
@@ -550,7 +559,7 @@ LABEL_30:
 		this->setupGuiScreen(1);
 	}
 	v29 = 1;
-LABEL_34:
+	LABEL_34:
 	DisableState v36(GL_DEPTH_TEST);
 	if(!v27) this->setupGuiScreen(v29 != 1);
 
@@ -566,19 +575,23 @@ LABEL_34:
 	}
 
 	if(this->minecraft->currentScreen) {
+		glEnable(0x0BE2);
+		glBlendFunc(0x0302, 0x0303);
 		this->minecraft->currentScreen->render(mx, my, pt);
+		glDisable(0x0BE2);
 	}
 }
+
 void GameRenderer::renderItemInHand(float a2, int32_t a3) {
-	Mob* viewEntityMaybe; // r3
-	float v6;			  // s15
-	float v7;			  // s14
-	float v8;			  // s13
-	Minecraft* minecraft; // r3
-	float fov;			  // s17
-	Minecraft* v11;		  // r3
-	Minecraft* v16;		  // r3
-	Minecraft* v17;		  // r3
+	Mob* viewEntityMaybe;
+	float v6;
+	float v7;
+	float v8;
+	Minecraft* minecraft;
+	float fov;
+	Minecraft* v11;
+	Minecraft* v16;
+	Minecraft* v17;
 
 	this->minecraft->player->setupLighting(this->minecraft->options.graphics, a2);
 	glLoadIdentity();
@@ -646,17 +659,17 @@ void GameRenderer::renderItemInHand(float a2, int32_t a3) {
 #include <rendering/Tesselator.hpp>
 extern MeshBuffer cube;
 void GameRenderer::renderLevel(float a2) {
-	Minecraft* minecraft;			// r3
-	Mob* player;					// r2
-	Minecraft* v6;					// r3
-	Mob* viewEntityMaybe;			// r5
-	LevelRenderer* levelRenderer;	// r6
-	ParticleEngine* particleEngine; // r10
-	float v10;						// s19
-	float v11;						// s18
-	float v12;						// s17
-	GLenum v13;						// r0
-	LevelRenderer* a1;				// [sp+14h] [bp-52Ch]
+	Minecraft* minecraft;
+	Mob* player;
+	Minecraft* v6;
+	Mob* viewEntityMaybe;
+	LevelRenderer* levelRenderer;
+	ParticleEngine* particleEngine;
+	float v10;
+	float v11;
+	float v12;
+	GLenum v13;
+	LevelRenderer* a1;
 
 	minecraft = this->minecraft;
 	if(!minecraft->viewEntityMaybe) {
@@ -676,7 +689,10 @@ void GameRenderer::renderLevel(float a2) {
 	v12 = viewEntityMaybe->prevPosZ + (float)((float)(viewEntityMaybe->posZ - viewEntityMaybe->prevPosZ) * a2);
 	glViewport(0, 0, v6->field_1C, v6->field_20);
 	this->setupClearColor(a2);
+
+	glDepthMask(1);
 	glClear(0x4500u);
+
 	this->setupCamera(a2, 0);
 	this->saveMatrices();
 	if(this->enableScissorTest) {
@@ -712,7 +728,14 @@ void GameRenderer::renderLevel(float a2) {
 
 	{
 		EnableState v19(2912);
-		DisableState v20(3042);
+		EnableState v20(3042);
+		glDepthMask(0);
+
+		// --- FIX DEL AGUA SOLIDA ---
+		// Forzamos manualmente que el agua se mezcle con transparencia (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+		glBlendFunc(0x0302, 0x0303);
+		// ---------------------------
+
 		if(viewEntityMaybe->isUnderLiquid(Material::water)) {
 			glCullFace(0x404u);
 		}
@@ -722,6 +745,8 @@ void GameRenderer::renderLevel(float a2) {
 		if(viewEntityMaybe->isUnderLiquid(Material::water)) {
 			glCullFace(0x405u);
 		}
+
+		glDepthMask(1);
 	}
 	if(this->minecraft->options.fancySkies) {
 		glPushMatrix();
@@ -734,13 +759,13 @@ void GameRenderer::renderLevel(float a2) {
 	if(this->field_4C == 1.0) {
 		if(viewEntityMaybe->isPlayer()) {
 			if(!this->minecraft->currentScreen && this->minecraft->selectedObject.hitType != 2 && !viewEntityMaybe->isUnderLiquid(Material::water)) {
-#ifndef PCTWEAKS
+				#ifndef PCTWEAKS
 				if(this->minecraft->useTouchscreen()) {
-#endif
+					#endif
 					levelRenderer->renderHitSelect((Player*)viewEntityMaybe, this->minecraft->selectedObject, 0, 0, a2);
-#ifndef PCTWEAKS
+					#ifndef PCTWEAKS
 				}
-#endif
+				#endif
 				levelRenderer->renderHit((Player*)viewEntityMaybe, this->minecraft->selectedObject, 0, 0, a2);
 			}
 		}
@@ -751,10 +776,11 @@ void GameRenderer::renderLevel(float a2) {
 		this->renderItemInHand(a2, 0);
 	}
 }
+
 void GameRenderer::renderSky(LevelRenderer* a2, float a3, float a4) {
-	float fov;			  // r0
-	Minecraft* minecraft; // r3
-	float v9;			  // s14
+	float fov;
+	Minecraft* minecraft;
+	float v9;
 
 	glMatrixMode(0x1701u);
 	glPushMatrix();
@@ -778,19 +804,22 @@ void GameRenderer::renderSky(LevelRenderer* a2, float a3, float a4) {
 	glPopMatrix();
 	glMatrixMode(0x1700u);
 }
+
 bool_t _d6e06788_matricesSaved = 0;
+
 void GameRenderer::saveMatrices(void) {
 	_d6e06788_matricesSaved = 1;
 	glGetFloatv(0xBA7u, this->projectionMat);
 	glGetFloatv(0xBA6u, this->modelViewMat);
 }
+
 static float _d67239c8[] = {192, 128, 64, 32};
 
 void GameRenderer::setupCamera(float a2, int32_t a3) {
-	Minecraft* minecraft; // r3
-	float v6;			  // s15
-	float fov;			  // r0
-	Minecraft* v8;		  // r3
+	Minecraft* minecraft;
+	float v6;
+	float fov;
+	Minecraft* v8;
 
 	minecraft = this->minecraft;
 	v6 = _d67239c8[minecraft->options.renderDistance];
@@ -809,7 +838,8 @@ void GameRenderer::setupCamera(float a2, int32_t a3) {
 	fov = this->getFov(a2, 1);
 	v8 = this->minecraft;
 	this->fov = fov;
-	gluPerspective(fov, (float)v8->field_1C / (float)v8->field_20, 0.05, this->field_8 * 1.2);
+
+	gluPerspective(fov, (float)v8->field_1C / (float)v8->field_20, 0.05, this->field_8);
 	glMatrixMode(0x1700u);
 	glLoadIdentity();
 	this->bobHurt(a2);
@@ -818,32 +848,28 @@ void GameRenderer::setupCamera(float a2, int32_t a3) {
 	}
 	this->moveCameraToPlayer(a2);
 }
+
 void GameRenderer::setupClearColor(float a2) {
-	Minecraft* minecraft; // r3
-	Color4* v5;			  // r6
-	Level* level;		  // r7
-	Mob* viewEntityMaybe; // r8
-	float v8;			  // s18
-	float g;			  // r1
-	float b;			  // r2
-	float a;			  // r3
-	float r;			  // s14
-	float v13;			  // s18
-	float v14;			  // s15
-	float v15;			  // s14
-	float v16;			  // s15
-	float v17;			  // s14
-	float v18;			  // r3
-	float v19;			  // r1
-	Minecraft* v20;		  // r3
-	float v21;			  // s15
-	float sunIntensity;	  // r0
-	float v23;			  // s9
-	float v24;			  // s11
-	float v25;			  // s12
-	float v26;			  // s13
-	float v27;			  // s14
-	float v28;			  // s15
+	Minecraft* minecraft;
+	Color4* v5;
+	Level* level;
+	Mob* viewEntityMaybe;
+	float v8;
+	float g;
+	float b;
+	float a;
+	float r;
+	float v13;
+	float v14;
+	float v15;
+	float v16;
+	float v17;
+	Minecraft* v20;
+	float v21;
+	float sunIntensity;
+	float v23;
+	float v24;
+	float v26;
 
 	minecraft = this->minecraft;
 	v5 = &this->field_84;
@@ -874,7 +900,7 @@ void GameRenderer::setupClearColor(float a2) {
 	} else if(viewEntityMaybe->isUnderLiquid(Material::lava)) {
 		*v5 = Color4(0.6, 0.1, 0.0, 1.0);
 	}
-LABEL_6:
+
 	v20 = this->minecraft;
 	v21 = this->field_94 + (float)((float)(this->field_98 - this->field_94) * a2);
 	this->field_84.r = this->field_84.r * v21;
@@ -888,10 +914,11 @@ LABEL_6:
 	this->field_74.a = 1.0;
 	glClearColor(this->field_74.r, this->field_74.g, this->field_74.b, this->field_74.a);
 }
+
 void GameRenderer::setupFog(int32_t a2) {
-	Mob* viewEntityMaybe; // r5
-	Color4* v5;			  // r1
-	float v6;			  // r1
+	Mob* viewEntityMaybe;
+	Color4* v5;
+	float v6;
 
 	viewEntityMaybe = this->minecraft->viewEntityMaybe;
 	if(a2) {
@@ -903,31 +930,31 @@ void GameRenderer::setupFog(int32_t a2) {
 	glFogfv(GL_FOG_COLOR, (const GLfloat*)v5);
 	glColor4f(1.0, 1.0, 1.0, 1.0);
 	if(viewEntityMaybe->isUnderLiquid(Material::water)) {
-#ifdef USEGLES
+		#ifdef USEGLES
 		glFogx(GL_FOG_MODE, 2048);
-#else
+		#else
 		glFogi(GL_FOG_MODE, 2048);
-#endif
+		#endif
 		v6 = 0.1;
-LABEL_8:
+		LABEL_8:
 		glFogf(GL_FOG_DENSITY, v6);
 		this->field_150 = 1;
 		return;
 	}
 	if(viewEntityMaybe->isUnderLiquid(Material::lava)) {
-#ifdef USEGLES
+		#ifdef USEGLES
 		glFogx(GL_FOG_MODE, 2048);
-#else
+		#else
 		glFogi(GL_FOG_MODE, 2048);
-#endif
+		#endif
 		v6 = 2.0;
 		goto LABEL_8;
 	}
-#ifdef USEGLES
+	#ifdef USEGLES
 	glFogx(GL_FOG_MODE, GL_LINEAR);
-#else
+	#else
 	glFogi(GL_FOG_MODE, GL_LINEAR);
-#endif
+	#endif
 	glFogf(GL_FOG_START, this->field_8 * 0.7);
 	glFogf(GL_FOG_END, this->field_8);
 	this->field_150 = 0;
@@ -939,6 +966,7 @@ LABEL_8:
 		glFogf(GL_FOG_START, 0.0);
 	}
 }
+
 void GameRenderer::setupGuiScreen(bool_t a2) {
 	Minecraft* minecraft;
 	float v3;
@@ -947,42 +975,40 @@ void GameRenderer::setupGuiScreen(bool_t a2) {
 	minecraft = this->minecraft;
 	v3 = (float)minecraft->field_20 * Gui::InvGuiScale;
 	v4 = (int32_t)(float)((float)minecraft->field_1C * Gui::InvGuiScale);
+
 	glMatrixMode(0x1701u);
 	glLoadIdentity();
 
-#ifdef USEGLES
-	glOrthof
-#else
-	glOrtho
-#endif
-		(0.0, (float)v4, (float)(int32_t)v3, 0.0, 2000.0, 3000.0);
+	glOrthof(0.0, (float)v4, (float)(int32_t)v3, 0.0, 2000.0, 3000.0);
 
 	glMatrixMode(0x1700u);
 	glLoadIdentity();
 	glTranslatef(0.0, 0.0, -2000.0);
 }
+
 static int32_t _D67AD634 = -1;
+
 void GameRenderer::tick(int32_t a2, int32_t a3) {
-	Minecraft* minecraft;					// r3
-	int v5;									// s17
-	float v6;								// r0
-	float v7;								// s17
-	float v8;								// s13
-	float v9;								// s15
-	float v10;								// r0
-	float v11;								// s15
-	float v12;								// s17
-	Minecraft* v13;							// r3
-	Minecraft* v14;							// r3
-	Player* viewEntityMaybe;				// r5
-	Level* level;							// r6
-	int v17;								// r8
-	int v18;								// r7
-	int v19;								// r0
-	float v20;								// r0
-	int v21;								// s14
-	float v22;								// s13
-	ItemInHandRenderer* itemInHandRenderer; // r0
+	Minecraft* minecraft;
+	int v5;
+	float v6;
+	float v7;
+	float v8;
+	float v9;
+	float v10;
+	float v11;
+	float v12;
+	Minecraft* v13;
+	Minecraft* v14;
+	Player* viewEntityMaybe;
+	Level* level;
+	int v17;
+	int v18;
+	int v19;
+	float v20;
+	int v21;
+	float v22;
+	ItemInHandRenderer* itemInHandRenderer;
 
 	--t_keepPic;
 	minecraft = this->minecraft;
@@ -1036,8 +1062,9 @@ void GameRenderer::tick(int32_t a2, int32_t a3) {
 		itemInHandRenderer->tick();
 	}
 }
+
 void GameRenderer::tickFov() {
-	Minecraft* minecraft; // r3
+	Minecraft* minecraft;
 
 	minecraft = this->minecraft;
 	if(minecraft->viewEntityMaybe == minecraft->player) {
@@ -1045,12 +1072,15 @@ void GameRenderer::tickFov() {
 		this->field_58 = this->field_58 + (float)((float)(minecraft->player->getFieldOfViewModifier() - this->field_58) * 0.5);
 	}
 }
+
 void GameRenderer::unZoomRegion() {
 	this->field_4C = 1.0;
 }
+
 void GameRenderer::updateAllChunks() {
 	this->minecraft->levelRenderer->updateDirtyChunks(this->minecraft->viewEntityMaybe, 1);
 }
+
 bool_t GameRenderer::updateFreeformPickDirection(float a2, struct Vec3& a3, struct Vec3& a4) {
 	if(this->minecraft->inputHolder->allowPicking()) {
 		float v8 = 12;
@@ -1082,9 +1112,8 @@ bool_t GameRenderer::updateFreeformPickDirection(float a2, struct Vec3& a3, stru
 			a3.x = v40.x;
 			a3.y = v19;
 			a3.z = v20;
-			Vec3 v41 = Vec3(v18, v21 - v40.y, v39.z - v40.z).normalized(); //inlined
+			Vec3 v41 = Vec3(v18, v21 - v40.y, v39.z - v40.z).normalized();
 			a4 = v41;
-			//inlined v40->add(a4->multiply(v8)) ?
 			Vec3 _a1(v8 * a4.x, v8 * a4.y, v8 * a4.z);
 			Vec3 v42(v40.x + _a1.x, v40.y + _a1.y, v40.z + _a1.z);
 			bool a5 = this->minecraft->player && this->minecraft->player->getSelectedItem() ? this->minecraft->player->getSelectedItem()->isLiquidClipItem() : 0;

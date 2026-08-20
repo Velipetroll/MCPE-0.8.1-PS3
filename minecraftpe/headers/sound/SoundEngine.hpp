@@ -1,6 +1,29 @@
 #pragma once
 #include <_types.h>
-#if defined(__WIN32__)
+
+// Subimos estas inclusiones para que nuestro motor PS3 conozca 'SoundDesc'
+#include <util/Random.hpp>
+#include <sound/SoundRepository.hpp>
+
+// ==========================================
+// RUTA PARA PS3 (Stub de audio silencioso)
+// ==========================================
+#if defined(__PS3__)
+
+struct SoundSystemPS3 {
+	SoundSystemPS3() {}
+	virtual ~SoundSystemPS3() {}
+
+	// Funciones que el .cpp exige para no crashear
+	inline void playAt(const SoundDesc& desc, float x, float y, float z, float vol, float pitch) {}
+	inline void setListenerAngle(float angle) {}
+};
+#define SS_SUPER_CLASS SoundSystemPS3
+
+// ==========================================
+// RUTA ORIGINAL (Windows, Linux, Android)
+// ==========================================
+#elif defined(__WIN32__)
 #include <sound/SoundSystemDirectSound.hpp>
 #define SS_SUPER_CLASS SoundSystemDirectSound
 #elif not defined(ANDROID) and defined(__linux__)
@@ -10,9 +33,6 @@
 #include <sound/SoundSystemSL.hpp>
 #define SS_SUPER_CLASS SoundSystemSL
 #endif
-
-#include <util/Random.hpp>
-#include <sound/SoundRepository.hpp>
 
 struct SoundEngine : public SS_SUPER_CLASS{
 	struct Options* options;

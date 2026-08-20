@@ -15,6 +15,9 @@
 #include <network/packet/RemoveBlockPacket.hpp>
 #include <inventory/Inventory.hpp>
 
+// FIX DEL LINKER: Añadido extern "C" para evitar el C++ Name Mangling
+extern "C" void PS3_Vibrate(int ms);
+
 GameMode::GameMode(Minecraft* a2) {
 	this->minecraft = a2;
 	this->field_4 = 0;
@@ -57,9 +60,13 @@ bool_t GameMode::destroyBlock(int32_t x, int32_t y, int32_t z, int32_t side) {
 	this->minecraft->soundEngine->play(tile->soundType->field_8, (float)x + 0.5, (float)y + 0.5, (float)z + 0.5, (float)(tile->soundType->field_0 + 1.0) * 0.5, tile->soundType->field_4 * 0.8);
 	tile->destroy(level, x, y, z, meta);
 	minecraft = this->minecraft;
+
+	// --- NUEVO SISTEMA DE VIBRACIÓN DUALSHOCK 3 ---
 	if(minecraft->options.destroyVibration) {
-		minecraft->platform()->vibrate(24);
+		PS3_Vibrate(40); // 40 milisegundos de vibración (suficiente para que el DS3 reaccione)
 	}
+	// ----------------------------------------------
+
 	if(this->minecraft->isOnline()) {
 		RemoveBlockPacket v18(this->minecraft->player->entityId, x, y, z);
 		this->minecraft->rakNetInstance->send(v18);

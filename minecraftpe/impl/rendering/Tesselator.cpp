@@ -1,3 +1,4 @@
+
 #include <rendering/Tesselator.hpp>
 #include <unigl.h>
 #include <_types.h>
@@ -26,8 +27,8 @@ Tesselator::CurrentVertexPointers::CurrentVertexPointers() {
 }
 
 Tesselator::Tesselator(int32_t size)
-	: tmat4x4_2(1.0)
-	, vec(0, 0, 0) {
+: tmat4x4_2(1.0)
+, vec(0, 0, 0) {
 	this->field_4C = 0;
 	this->field_50 = 0;
 	this->vec.x = 0.0;
@@ -53,11 +54,6 @@ Tesselator::Tesselator(int32_t size)
 	this->field_E8 = 0;
 	this->drawMode = 0;
 
-	//according to arm version of mcpe "* 0.017453" should be a part of glm
-	//but it is not, so you have to add it here
-	//--->
-	//probably Mojang used some commit before https://github.com/g-truc/glm/commit/2b747cbbadfd3af39b443e88902f1c98bd231083
-	//with flag -DGLM_FORCE_RADIANS in their build
 	this->tmat4x4_2 = glm::rotate<float>(glm::tmat4x4<float>(1.0), 210.0*0.017453, glm::vec3(1, 0, 0));
 	this->tmat4x4_2 = glm::rotate<float>(this->tmat4x4_2, 45.0*0.017453, glm::vec3(0, 1, 0));
 }
@@ -72,7 +68,6 @@ void Tesselator::_buildQuadIndexBuffer() {
 	}
 }
 MeshBuffer::VertexFormat* Tesselator::_genVertexFormat() {
-	 //TODO check
 	uint32_t offsets = *(uint32_t*)this->meshBuffer_vf2.offsets;
 	auto&& pp = this->field_34.find(offsets);
 	if(pp != this->field_34.end()) {
@@ -110,7 +105,7 @@ void Tesselator::begin(int32_t mode, int32_t a3) {
 			this->clear();
 			this->field_D4 = 1;
 			this->drawMode = mode;
-			this->isColorDisabled = 0; //=v6
+			this->isColorDisabled = 0;
 			MeshBuffer::VertexFormat v8;
 			uint8_t* uu = v8.offsets;
 			this->meshBuffer_vf2.offsets[0] = uu[0];
@@ -173,24 +168,31 @@ void Tesselator::color(int32_t r, int32_t g, int32_t b) {
 void Tesselator::color(int32_t r, int32_t g, int32_t b, int32_t a) {
 	if(this->isColorDisabled) return;
 
-	//uses USAT instruction for rgba
-	if(r < 0) r = 0;
-	if(r > 255) r = 255;
-	if(g < 0) g = 0;
-	if(g > 255) g = 255;
-	if(b < 0) b = 0;
-	if(b > 255) b = 255;
-	if(a < 0) a = 0;
-	if(a > 255) a = 255;
+	if(r < 0) r = 0; if(r > 255) r = 255;
+	if(g < 0) g = 0; if(g > 255) g = 255;
+	if(b < 0) b = 0; if(b > 255) b = 255;
+	if(a < 0) a = 0; if(a > 255) a = 255;
 
-	this->color_int = (r & 0xff) | (g << 8) | (b << 16) | (a << 24);
+	// FIX CORREGIDO: Empaquetamos en el orden natural RGBA.
+	// El procesador Big-Endian de PS3 lo guardará en memoria como el array byte[]: [R, G, B, A]
+	this->color_int = (r << 24) | (g << 16) | (b << 8) | a;
+
 	if(this->field_D4) {
 		this->meshBuffer_vf2.enableField(MeshBuffer::VertexFormat::Field::FIELD2);
 	}
 }
+
 void Tesselator::colorABGR(int32_t a2) {
 	if(this->isColorDisabled) return;
-	this->color_int = a2;
+
+	// a2 es un color ABGR recibido desde Android
+	int32_t r = a2 & 0xFF;
+	int32_t g = (a2 >> 8) & 0xFF;
+	int32_t b = (a2 >> 16) & 0xFF;
+	int32_t a = (a2 >> 24) & 0xFF;
+
+	// FIX CORREGIDO: Lo guardamos en formato RGBA para Big-Endian
+	this->color_int = (r << 24) | (g << 16) | (b << 8) | a;
 	this->meshBuffer_vf2.enableField(MeshBuffer::VertexFormat::Field::FIELD2);
 }
 
@@ -207,8 +209,8 @@ void Tesselator::draw(bool_t a2) {
 
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-		//TODO replace with gl constants
 		Tesselator::CurrentVertexPointers v13(this->field_14.data(), this->meshBuffer_vf2);
+
 		if(v13.hasTexture) {
 			glTexCoordPointer(2, GL_FLOAT, this->meshBuffer_vf2.stride, v13.hasTexture);
 			if(a2) {
@@ -250,7 +252,7 @@ void Tesselator::enableColor() {
 }
 
 MeshBuffer Tesselator::end(void) {
-	int32_t drawMode; // r2
+	int32_t drawMode;
 
 	if(!this->isDrawing || this->field_D6 || (this->isDrawing = 0, !this->maxVertextNumber) || this->field_D4) {
 		return MeshBuffer();
@@ -266,7 +268,7 @@ MeshBuffer Tesselator::end(void) {
 		MeshBuffer v7(this->_genVertexFormat(), this->field_14.data(), (this->field_14.size()) / (uint32_t)this->meshBuffer_vf2.stride, this->vertexes.data(), this->useDrawElementsOrDrawArrays, this->someSIzeMaybe, drawMode);
 		this->field_E8 += this->field_14.size();
 		this->clear();
-		return v7; //TODO must copy?
+		return v7;
 	}
 }
 
@@ -316,11 +318,11 @@ void Tesselator::quad(uint16_t a2, bool_t a3) {
 	else this->quad(a2, a2 + 1, a2 + 2, a2 + 3);
 }
 
-void Tesselator::quad(uint16_t a2, uint16_t a3, uint16_t a4, uint16_t a5) { //TODO
-	int32_t useDrawElementsOrDrawArrays;									// r6
-	uint8_t* vecStartPtr;													// r5
-	uint8_t* v11;															// r0
-	uint16_t* v12;															// r0
+void Tesselator::quad(uint16_t a2, uint16_t a3, uint16_t a4, uint16_t a5) {
+	int32_t useDrawElementsOrDrawArrays;
+	uint8_t* vecStartPtr;
+	uint8_t* v11;
+	uint16_t* v12;
 
 	if(!this->someSIzeMaybe) {
 		this->someSIzeMaybe = 2;
@@ -385,18 +387,18 @@ void Tesselator::tex(float u, float v) {
 void Tesselator::tilt(void) {
 	this->isTilted = 1;
 }
-void Tesselator::triangle(uint16_t a2, uint16_t a3, uint16_t a4) { //TODO
-	unsigned int v8;											   // r5
-	int useDrawElementsOrDrawArrays;							   // r5
-	uint8_t* v12;												   // r0
-	uint8_t* v13;												   // r3
-	uint16_t* v14;												   // r3
+void Tesselator::triangle(uint16_t a2, uint16_t a3, uint16_t a4) {
+	unsigned int v8;
+	int useDrawElementsOrDrawArrays;
+	uint8_t* v12;
+	uint8_t* v13;
+	uint16_t* v14;
 
 	if(!this->someSIzeMaybe) {
 		this->someSIzeMaybe = 2;
 	}
 	v8 = (this->useDrawElementsOrDrawArrays + 3) * this->someSIzeMaybe;
-	this->vertexes.resize(v8); //TODO check
+	this->vertexes.resize(v8);
 
 	useDrawElementsOrDrawArrays = this->useDrawElementsOrDrawArrays;
 	v12 = this->vertexes.data();
@@ -470,5 +472,4 @@ void Tesselator::voidBeginAndEndCalls(bool_t a2) {
 	this->field_D6 = a2;
 }
 Tesselator::~Tesselator() {
-	//i hope it calls destructors automatically
 }

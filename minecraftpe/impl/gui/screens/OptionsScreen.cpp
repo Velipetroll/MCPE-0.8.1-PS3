@@ -64,9 +64,13 @@ void OptionsScreen::generateOptionScreens(void) {
 	this->optionPanes[0]->createOptionsGroup("options.group.game")->addOptionItem(&Options::Option::NAME, this->minecraft)->addOptionItem(&Options::Option::DIFFICULTY, this->minecraft)->addOptionItem(&Options::Option::THIRD_PERSON, this->minecraft)->addOptionItem(&Options::Option::SERVER_VISIBLE, this->minecraft);
 	this->optionPanes[0]->createOptionsGroup("options.group.realms")->addLoginItem(this->minecraft);
 	this->optionPanes[1]->createOptionsGroup("options.group.input")->addOptionItem(&Options::Option::SENSITIVITY, this->minecraft)->addOptionItem(&Options::Option::INVERT_MOUSE, this->minecraft)->addOptionItem(&Options::Option::LEFT_HANDED, this->minecraft)->addOptionItem(&Options::Option::USE_TOUCHSCREEN, this->minecraft)->addOptionItem(&Options::Option::USE_TOUCH_JOYPAD, this->minecraft)->addOptionItem(&Options::Option::PIXELS_PER_MILLIMETER, this->minecraft);
-	if(this->minecraft->platform()->supportsVibration()) {
-		this->optionPanes[1]->createOptionsGroup("options.group.feedback")->addOptionItem(&Options::Option::DESTROY_VIBRATION, this->minecraft);
-	}
+
+	// --- FIX DEL CRASHEO EN OPCIONES ---
+	// Quitamos el check "minecraft->platform()->supportsVibration()" porque platform() vale NULL en el port.
+	// Nosotros hemos implementado la vibracion de forma nativa para PS3, asi que forzamos mostrar el boton.
+	this->optionPanes[1]->createOptionsGroup("options.group.feedback")->addOptionItem(&Options::Option::DESTROY_VIBRATION, this->minecraft);
+	// -----------------------------------
+
 	this->optionPanes[2]->createOptionsGroup("options.group.graphics")->addOptionItem(&Options::Option::RENDER_DISTANCE, this->minecraft)->addOptionItem(&Options::Option::GRAPHICS, this->minecraft)->addOptionItem(&Options::Option::FANCY_SKIES, this->minecraft)->addOptionItem(&Options::Option::ANIMATE_TEXTURES, this->minecraft);
 	this->optionPanes[2]->createOptionsGroup("options.group.graphics.experimental")->addOptionItem(&Options::Option::HIDE_GUI, this->minecraft);
 	this->optionPanes[3]->createOptionsGroup("options.group.audio")->addOptionItem(&Options::Option::SOUND, this->minecraft);

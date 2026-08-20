@@ -1,0 +1,22 @@
+void main(
+    float2 texcoord : TEXCOORD0,
+    float4 color : COLOR0,
+    float4 u_flags : TEXCOORD1,           // <- RECIBIDO DESDE EL VERTEX SHADER
+    uniform sampler2D tex : TEXUNIT0,
+    out float4 oColor : COLOR
+) {
+    // Si hay textura (u_flags.x), usar textura, si no, color solido
+    float4 texColor = (u_flags.x > 0.5) ? tex2D(tex, texcoord) : float4(1.0, 1.0, 1.0, 1.0);
+    float4 finalColor = texColor * color;
+
+    // Alpha test (transparencia de hojas de arboles, cristales, etc)
+    if (u_flags.y > 0.5) {
+        // En PS3, a veces la precisión de texturas DXT puede causar bordes negros
+        // discard elimina el pixel completamente evitando Z-fighting
+        if (finalColor.a < u_flags.z) {
+            discard;
+        }
+    }
+
+    oColor = finalColor;
+}

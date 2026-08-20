@@ -1,6 +1,8 @@
 #include <network/mco/MCOParser.hpp>
 #include <json/json.h>
 #include <network/mco/LoginInformation.hpp>
+#include <network/mco/MCOServerListItem.hpp> // Anadido para que el compilador sepa que es esto
+#include <stdio.h> // Anadido para printf
 
 void MCOParser::parseErrorMessage(const std::string& a2, std::string& reason, int32_t& error) {
 	Json::Value v8;
@@ -29,7 +31,14 @@ LoginInformation MCOParser::parseMCOAccountValidSessionReturnValue(const std::st
 	ret.profileName = v7.get("name", Json::Value("")).asString();
 	return ret;
 }
-std::unordered_map<int64_t, MCOServerListItem> MCOParser::parseServerList(const std::string& a3);
+
+// ARREGLADO: Quitamos el punto y coma e implementamos un cuerpo vacio
+std::unordered_map<int64_t, MCOServerListItem> MCOParser::parseServerList(const std::string& a3) {
+	std::unordered_map<int64_t, MCOServerListItem> result;
+	printf("MCOParser::parseServerList - not implemented\n");
+	return result;
+}
+
 void MCOParser::parseStatus(const std::string& a2, bool& buyServerEnabled, bool& createServersEnabled, bool& serviceEnabled) {
 	Json::Value v8;
 	Json::Reader v11;

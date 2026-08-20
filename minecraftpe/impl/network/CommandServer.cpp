@@ -26,11 +26,11 @@ CommandServer::CommandServer(Minecraft* a2) {
 void CommandServer::_close() {
 	if(this->initialized) {
 		if(this->_socket > 0) {
-#ifdef __WIN32__
+			#ifdef __WIN32__
 			closesocket(this->_socket);
-#else
+			#else
 			close(this->_socket);
-#endif
+			#endif
 		}
 		this->initialized = 0;
 		this->_socket = 0;

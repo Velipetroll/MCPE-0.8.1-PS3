@@ -18,11 +18,21 @@
 #include <nbt/ListTag.hpp>
 #include <tile/entity/TileEntity.hpp>
 #include <entity/EntityFactory.hpp>
+#include <cstdio> // Para printf
+
+// Helper para convertir enteros de Little-Endian a Big-Endian (PS3)
+static inline int32_t bswap_le32(int32_t val) {
+	#if defined(__PS3__) || defined(__PPU__) || __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+	return __builtin_bswap32(val);
+	#else
+	return val;
+	#endif
+}
 
 ExternalFileLevelStorage::ExternalFileLevelStorage(const std::string& a2, const std::string& a3)
-	: field_8(a2),
-	field_2C(),
-	anotherDataFolder(a3) {
+: field_8(a2),
+field_2C(),
+anotherDataFolder(a3) {
 	this->dataFolder = a3 + "/players";
 	this->field_28 = 3;
 	this->levelData = 0;
@@ -32,7 +42,7 @@ ExternalFileLevelStorage::ExternalFileLevelStorage(const std::string& a2, const 
 	this->level = 0;
 	this->field_24 = 0;
 	createFolderIfNotExists(this->anotherDataFolder.c_str());
-	if(this->anotherDataFolder.find(LevelStorageSource::TempLevelId, 0) == -1) {
+	if(this->anotherDataFolder.find(LevelStorageSource::TempLevelId, 0) == std::string::npos) {
 		createFolderIfNotExists(this->dataFolder.c_str());
 	}
 	std::string v11 = this->anotherDataFolder + "/" + "level.dat";
@@ -48,39 +58,51 @@ ExternalFileLevelStorage::ExternalFileLevelStorage(const std::string& a2, const 
 		this->levelData = 0;
 	}
 }
+
 bool_t ExternalFileLevelStorage::readLevelData(const std::string& a1, LevelData& a2) {
 	std::string filename = a1 + "/" + "level.dat";
 	FILE* v4 = fopen(filename.c_str(), "rb");
 	if(v4 || (filename = a1 + "/" + "level.dat_old", v4 = fopen(filename.c_str(), "rb")) != 0) {
 		int ver = 0;
 		int n = 0;
-		unsigned char* v5;
-		if(fread(&ver, sizeof(ver), 1u, v4) == 1 && fread(&n, sizeof(n), 1u, v4) == 1 && (int)n <= getRemainingFileSize(v4) && (int)n > 0) {
-			v5 = new unsigned char[n];
-			int v7 = fread(v5, 1, n, v4);
-			if(v7 == n) {
-				if(ver == 1) {
-					RakNet::BitStream v16(v5, v7, 0);
-					a2.v1_read(v16, ver);
-					goto end;
-				}
-				if(ver > 1) {
-					RakNet::BitStream v16(v5, v7, 0);
-					RakDataInput v14;
-					v14.stream = &v16;
-					Tag* v8 = NbtIo::read(&v14);
-					if(v8) {
-						a2.getTagData((CompoundTag*)v8);
-						v8->deleteChildren();
-						delete v8;
+		unsigned char* v5 = nullptr;
+
+		if(fread(&ver, sizeof(ver), 1u, v4) == 1 && fread(&n, sizeof(n), 1u, v4) == 1) {
+			// CORRECCIÓN PS3: Convertimos de Little-Endian a Big-Endian
+			ver = bswap_le32(ver);
+			n = bswap_le32(n);
+
+			printf("[LevelStorage] Leyendo %s: Version=%d, Tamano=%d bytes\n", filename.c_str(), ver, n);
+			fflush(stdout);
+
+			int rem = getRemainingFileSize(v4);
+			if((int)n <= rem + 8 && (int)n > 0) {
+				v5 = new unsigned char[n];
+				int v7 = fread(v5, 1, n, v4);
+				if(v7 == n) {
+					if(ver == 1) {
+						RakNet::BitStream v16(v5, v7, 0);
+						a2.v1_read(v16, ver);
 					}
-					goto end;
+					else if(ver > 1) {
+						RakNet::BitStream v16(v5, v7, 0);
+						RakDataInput v14;
+						v14.stream = &v16;
+						Tag* v8 = NbtIo::read(&v14);
+						if(v8) {
+							printf("[LevelStorage] NBT de level.dat cargado con exito.\n");
+							fflush(stdout);
+							a2.getTagData((CompoundTag*)v8);
+							v8->deleteChildren();
+							delete v8;
+						}
+					}
 				}
+			} else {
+				printf("[LevelStorage] ERROR: Tamano de buffer invalido (%d bytes, rem=%d)\n", n, rem);
+				fflush(stdout);
 			}
-		} else {
-			v5 = 0;
 		}
-end:
 		fclose(v4);
 		if(v5) {
 			delete[] v5;
@@ -89,40 +111,37 @@ end:
 	}
 	return 0;
 }
+
 void ExternalFileLevelStorage::readPlayerData(const std::string& a1, LevelData& a2) {
 	FILE* v3 = fopen(a1.c_str(), "rb");
 	if(v3) {
 		int size;
 		int ptr;
-		if(fread(&size, sizeof(size), 1, v3) == 1 && fread(&ptr, sizeof(ptr), 1, v3) && size == 1) {
-			int v4 = fread(&a2, 1, sizeof(a2), v3);
-			if(v4 == ptr) {
-				float z = a2.playerData.z;
-				if(a2.playerData.x < 0.5) {
-					a2.playerData.x = 0.5;
+		if(fread(&size, sizeof(size), 1, v3) == 1 && fread(&ptr, sizeof(ptr), 1, v3)) {
+			size = bswap_le32(size);
+			ptr = bswap_le32(ptr);
+
+			if (size == 1) {
+				int v4 = fread(&a2, 1, sizeof(a2), v3);
+				if(v4 == ptr) {
+					float z = a2.playerData.z;
+					if(a2.playerData.x < 0.5) a2.playerData.x = 0.5;
+					bool v6 = a2.playerData.x == 255.5;
+					bool v7 = a2.playerData.x < 255.5;
+					if(z < 0.5) a2.playerData.z = 0.5;
+					float v8 = a2.playerData.z;
+					if(!v7 && !v6) a2.playerData.x = 255.5;
+					float y = a2.playerData.y;
+					if(v8 > 255.5) a2.playerData.z = 255.5;
+					if(y < 0.0) a2.playerData.y = 64.0;
+					a2.field_50 = size;
 				}
-				bool v6 = a2.playerData.x == 255.5;
-				bool v7 = a2.playerData.x < 255.5;
-				if(z < 0.5) {
-					a2.playerData.z = 0.5;
-				}
-				float v8 = a2.playerData.z;
-				if(!v7 && !v6) {
-					a2.playerData.x = 255.5;
-				}
-				float y = a2.playerData.y;
-				if(v8 > 255.5) {
-					a2.playerData.z = 255.5;
-				}
-				if(y < 0.0) {
-					a2.playerData.y = 64.0;
-				}
-				a2.field_50 = size;
 			}
 		}
 		fclose(v3);
 	}
 }
+
 void ExternalFileLevelStorage::saveLevelData(const std::string& a1, LevelData& a2, std::vector<Player*>* a3) {
 	std::string v5 = a1 + '/';
 	std::string v6 = v5 + "level.dat_new";
@@ -142,18 +161,20 @@ void ExternalFileLevelStorage::saveLevelData(const std::string& a1, LevelData& a
 		}
 	}
 }
+
 void ExternalFileLevelStorage::savePendingUnsavedChunks(int32_t a2) {
 	int v2 = a2;
 	if(a2 < 0) {
-		v2 = this->field_2C.size(); //loop in mcpe due to stlport implementation
+		v2 = this->field_2C.size();
 	}
 	for(int v5 = 0; ++v5 <= v2;) {
 		if(this->field_2C.empty()) break;
-		UnsavedLevelChunk* ulv = &this->field_2C.front();
-		this->save(this->level, ulv->chunk); //TODO check
+		UnsavedLevelChunk ulv = this->field_2C.front();
+		this->save(this->level, ulv.chunk);
 		this->field_2C.pop_front();
 	}
 }
+
 bool_t ExternalFileLevelStorage::writeLevelData(const std::string& a1, LevelData& a2, const std::vector<Player*>* a3) {
 	FILE* f = fopen(a1.c_str(), "wb");
 	if(f) {
@@ -176,11 +197,12 @@ bool_t ExternalFileLevelStorage::writeLevelData(const std::string& a1, LevelData
 			tag->deleteChildren();
 			delete tag;
 		}
-		int32_t sv = a2.getStorageVersion();
+		int32_t sv = bswap_le32(a2.getStorageVersion());
 		fwrite(&sv, 4u, 1u, f);
-		size_t sz = v14.GetNumberOfBytesUsed();
+		int32_t sz_raw = v14.GetNumberOfBytesUsed();
+		int32_t sz = bswap_le32(sz_raw);
 		fwrite(&sz, 4u, 1u, f);
-		fwrite(v14.GetData(), 1u, sz, f);
+		fwrite(v14.GetData(), 1u, sz_raw, f);
 		fclose(f);
 		return 1;
 	}
@@ -195,18 +217,21 @@ ExternalFileLevelStorage::~ExternalFileLevelStorage() {
 		delete this->levelData;
 	}
 }
+
 LevelData* ExternalFileLevelStorage::prepareLevel(Level* a2) {
 	this->level = a2;
 	return this->levelData;
 }
+
 ChunkStorage* ExternalFileLevelStorage::createChunkStorage(Dimension*) {
 	return this;
 }
+
 void ExternalFileLevelStorage::saveLevelData(LevelData& a2, std::vector<Player*>* a3) {
 	ExternalFileLevelStorage::saveLevelData(this->anotherDataFolder, a2, a3);
 }
 
-static std::string sub_D6677960(std::string& a2, std::string& a3) {
+static std::string sub_D6677960(const std::string& a2, const std::string& a3) {
 	return a2 + "/" + Util::toLower(a3) + ".dat";
 }
 
@@ -214,10 +239,18 @@ bool_t ExternalFileLevelStorage::load(Player* a2) {
 	if(!a2) return 0;
 	FILE* v4 = fopen(sub_D6677960(this->dataFolder, a2->field_CA4).c_str(), "rb");
 	if(!v4) return 0;
-	int sz, v11, n;
-	fread(&sz, 1, sizeof(sz), v4);
+	int sz = 0, v11 = 0, n = 0;
+	fread(&sz, 4, 1, v4);
+	fread(&v11, 4, 1, v4);
+	fread(&n, 4, 1, v4);
+
+	sz = bswap_le32(sz);
+	v11 = bswap_le32(v11);
+	n = bswap_le32(n);
+
 	int rfs = getRemainingFileSize(v4);
 	if(n > rfs || n <= 0) {
+		fclose(v4);
 		return 0;
 	} else {
 		bool ret = 0;
@@ -236,11 +269,12 @@ bool_t ExternalFileLevelStorage::load(Player* a2) {
 			ret = 0;
 		}
 		if(v6) delete[] v6;
+		fclose(v4);
 		return ret;
 	}
-
 }
-static int _d6753BB8 = 0x524C50;
+
+static int32_t _d6753BB8 = 0x524C50;
 bool_t ExternalFileLevelStorage::save(Player* a2) {
 	RakNet::BitStream v12;
 	RakDataOutput v10;
@@ -251,16 +285,18 @@ bool_t ExternalFileLevelStorage::save(Player* a2) {
 		Tag::writeNamedTag(&v11, &v10);
 		v11.deleteChildren();
 	}
-	std::string newa = sub_D6677960(this->dataFolder, a2->field_CA4); //TODO check
+	std::string newa = sub_D6677960(this->dataFolder, a2->field_CA4);
 	std::string v11 = newa + ".tmp";
 	FILE* v5 = fopen(v11.c_str(), "wb");
 	if(v5) {
-		int size = 1;
-		size_t n = v12.GetNumberOfBytesUsed();
-		fwrite(&_d6753BB8, 1u, 4u, v5);
+		int32_t magic = bswap_le32(_d6753BB8);
+		int32_t size = bswap_le32(1);
+		int32_t n_raw = v12.GetNumberOfBytesUsed();
+		int32_t n = bswap_le32(n_raw);
+		fwrite(&magic, 4u, 1u, v5);
 		fwrite(&size, 4u, 1u, v5);
 		fwrite(&n, 4u, 1u, v5);
-		fwrite(v12.GetData(), 1u, n, v5);
+		fwrite(v12.GetData(), 1u, n_raw, v5);
 		fclose(v5);
 		if(exists(newa.c_str())) {
 			remove(newa.c_str());
@@ -270,11 +306,14 @@ bool_t ExternalFileLevelStorage::save(Player* a2) {
 	}
 	return 0;
 }
+
 void ExternalFileLevelStorage::closeAll() {
 }
+
 void ExternalFileLevelStorage::saveGame(Level* a2) {
-	return this->saveEntities(a2, 0);
+	this->saveEntities(a2, 0);
 }
+
 void ExternalFileLevelStorage::loadEntities(Level* a2, LevelChunk* a3) {
 	this->field_34 = this->field_24;
 	FILE* v4 = fopen((this->anotherDataFolder + "/entities.dat").c_str(), "rb");
@@ -285,6 +324,10 @@ void ExternalFileLevelStorage::loadEntities(Level* a2, LevelChunk* a3) {
 		fread(&v35, 1u, 4u, v4);
 		fread(dest, 4u, 1u, v4);
 		fread(&n, 4u, 1u, v4);
+
+		v35 = bswap_le32(v35);
+		n = bswap_le32(n);
+
 		int rem = getRemainingFileSize(v4);
 		if(n <= rem && n > 0) {
 			unsigned char* src = new unsigned char[n];
@@ -293,72 +336,69 @@ void ExternalFileLevelStorage::loadEntities(Level* a2, LevelChunk* a3) {
 			RakDataInput v36;
 			v36.stream = &v37;
 			CompoundTag* v6 = (CompoundTag*)NbtIo::read(&v36);
-			if(v6->contains("Entities", 9)) {
-				ListTag* list = v6->getList("Entities");
-				for(int v9 = 0; v9 < list->value.size(); ++v9) {
-					CompoundTag* v10 = (CompoundTag*)list->value[v9];
-					if(v10) {
-						if(v10->getId() == 10) {
-							Entity* e = EntityFactory::loadEntity(v10, a2);
-							Entity* v16 = e;
-							if(e) {
-								a2->addEntity(e);
-								CompoundTag* v11 = v10;
-								//TODO check complex mountables
-								for(auto&& i = v10->value.find(Entity::RIDING_TAG); i != v11->value.end(); i = v11->value.find(Entity::RIDING_TAG)) {
-									CompoundTag* comp = v11->getCompound(Entity::RIDING_TAG);
-									Entity* v14 = EntityFactory::loadEntity(comp, a2);
-									if(v14) {
-										a2->addEntity(v14);
-										v16->ride(v14);
+			if(v6) {
+				if(v6->contains("Entities", 9)) {
+					ListTag* list = v6->getList("Entities");
+					for(int v9 = 0; v9 < list->value.size(); ++v9) {
+						CompoundTag* v10 = (CompoundTag*)list->value[v9];
+						if(v10) {
+							if(v10->getId() == 10) {
+								Entity* e = EntityFactory::loadEntity(v10, a2);
+								Entity* v16 = e;
+								if(e) {
+									a2->addEntity(e);
+									CompoundTag* v11 = v10;
+									for(auto&& i = v10->value.find(Entity::RIDING_TAG); i != v11->value.end(); i = v11->value.find(Entity::RIDING_TAG)) {
+										CompoundTag* comp = v11->getCompound(Entity::RIDING_TAG);
+										Entity* v14 = EntityFactory::loadEntity(comp, a2);
+										if(v14) {
+											a2->addEntity(v14);
+											v16->ride(v14);
+										}
+										v16 = v14;
+										v11 = v11->getCompound(Entity::RIDING_TAG);
 									}
-									v16 = v14;
-									v11 = v11->getCompound(Entity::RIDING_TAG);
 								}
 							}
-						} else {
-							v10->getId();
 						}
 					}
 				}
-			}
 
-			if(v6->contains("TileEntities", 9)) {
-				ListTag* v19 = v6->getList("TileEntities");
-				for(int v18 = 0; v18 < v19->value.size(); ++v18) {
-					CompoundTag* v20 = (CompoundTag*)v19->value[v18];
-					if(v20) {
-						if(v20->getId() == 10) {
-							TileEntity* te = TileEntity::loadStatic(v20);
-							if(te) {
-								Tile* v21 = Tile::tiles[a2->getTile(te->posX, te->posY, te->posZ)];
-								bool v23;
-								if(v21) {
-									v23 = !te->isType(v21->getTileEntityType());
-								} else {
-									v23 = 1;
-								}
-								LevelChunk* c = a2->getChunkAt(te->posX, te->posZ);
-								if(!c || c->hasTileEntityAt(te) || v23) {
-									delete te;
-								} else {
-									c->addTileEntity(te);
+				if(v6->contains("TileEntities", 9)) {
+					ListTag* v19 = v6->getList("TileEntities");
+					for(int v18 = 0; v18 < v19->value.size(); ++v18) {
+						CompoundTag* v20 = (CompoundTag*)v19->value[v18];
+						if(v20) {
+							if(v20->getId() == 10) {
+								TileEntity* te = TileEntity::loadStatic(v20);
+								if(te) {
+									Tile* v21 = Tile::tiles[a2->getTile(te->posX, te->posY, te->posZ)];
+									bool v23;
+									if(v21) {
+										v23 = !te->isType(v21->getTileEntityType());
+									} else {
+										v23 = 1;
+									}
+									LevelChunk* c = a2->getChunkAt(te->posX, te->posZ);
+									if(!c || c->hasTileEntityAt(te) || v23) {
+										delete te;
+									} else {
+										c->addTileEntity(te);
+									}
 								}
 							}
-						} else {
-							v20->getId();
 						}
 					}
 				}
+				v6->deleteChildren();
+				delete v6;
 			}
-
-			v6->deleteChildren();
-			delete v6;
 			if(src) delete[] src;
 		}
 		fclose(v4);
 	}
 }
+
 LevelChunk* ExternalFileLevelStorage::load(Level* a2, int32_t a3, int32_t a4) {
 	if(this->regionFile || (this->regionFile = new RegionFile(this->anotherDataFolder), this->regionFile->open())) {
 		RegionFile* regionFile = this->regionFile;
@@ -374,7 +414,6 @@ LevelChunk* ExternalFileLevelStorage::load(Level* a2, int32_t a3, int32_t a4) {
 				v22->Read((char*)v10->blockLight.data, 0x4000);
 			}
 			v22->Read((char*) v10->updateMap, 0x100);
-			if(v22->GetData()) delete[] v22->GetData(); //TODO is this actually needed?
 			if(v22) {
 				delete v22;
 			}
@@ -390,8 +429,6 @@ LevelChunk* ExternalFileLevelStorage::load(Level* a2, int32_t a3, int32_t a4) {
 				int valid = Tile::transformToValidBlockId(v19);
 				if(v19 != valid) {
 					v10->tiles[i] = valid;
-				}
-				if(v19 != valid) {
 					v17 = 1;
 				}
 			}
@@ -411,6 +448,7 @@ LevelChunk* ExternalFileLevelStorage::load(Level* a2, int32_t a3, int32_t a4) {
 		return 0;
 	}
 }
+
 void ExternalFileLevelStorage::save(Level* a2, LevelChunk* a3) {
 	RegionFile* v5;
 	if(this->regionFile || (v5 = new RegionFile(this->anotherDataFolder), this->regionFile = v5, v5->open())) {
@@ -428,6 +466,7 @@ void ExternalFileLevelStorage::save(Level* a2, LevelChunk* a3) {
 		this->regionFile = 0;
 	}
 }
+
 void ExternalFileLevelStorage::saveEntities(Level* a2, LevelChunk* a3) {
 	this->field_34 = this->field_24;
 	ListTag* v6 = new ListTag();
@@ -460,23 +499,26 @@ void ExternalFileLevelStorage::saveEntities(Level* a2, LevelChunk* a3) {
 	RakDataOutput a1;
 	a1.bitStream = &v23;
 	Tag::writeNamedTag(&v22, &a1);
-	int n = v23.GetNumberOfBytesUsed();
+	int n_raw = v23.GetNumberOfBytesUsed();
+	int n = bswap_le32(n_raw);
 	FILE* v15 = fopen((this->anotherDataFolder + "/entities.dat").c_str(), "wb");
 	if(v15) {
-		int sz = 1;
-		fwrite("ENT", 1, 4, v15);
+		int sz = bswap_le32(1);
 		fwrite(&sz, 4, 1, v15);
+		fwrite("ENT\0", 1, 4, v15);
 		fwrite(&n, 4, 1, v15);
-		fwrite(v23.GetData(), 1, n, v15);
+		fwrite(v23.GetData(), 1, n_raw, v15);
 		fclose(v15);
 	}
 	v22.deleteChildren();
 	getTimeS();
 }
+
 void ExternalFileLevelStorage::saveAll(Level* a2, std::vector<LevelChunk*>& a3) {
 	ChunkStorage::saveAll(a2, a3);
-	return this->savePendingUnsavedChunks(-1);
+	this->savePendingUnsavedChunks(-1);
 }
+
 void ExternalFileLevelStorage::tick() {
 	if(this->level) {
 		this->field_24 = this->field_24 + 1;
@@ -493,7 +535,7 @@ void ExternalFileLevelStorage::tick() {
 						}
 
 						this->field_2C.push_back({x + 16 * z, (int32_t)RakNet::GetTimeMS(), chunk});
-LABEL_12:
+						LABEL_12:
 						chunk->unsaved = 0;
 					}
 				}
@@ -506,5 +548,6 @@ LABEL_12:
 		}
 	}
 }
+
 void ExternalFileLevelStorage::flush() {
 }

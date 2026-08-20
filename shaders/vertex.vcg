@@ -1,0 +1,21 @@
+void main(
+    float3 position : POSITION,
+    float2 texcoord : TEXCOORD0,
+    float4 color : COLOR0,
+    uniform float4x4 mvp,
+    uniform float4 u_color,
+    uniform float4 u_use_vtx_color,
+    uniform float4 u_flags,
+    out float4 oPosition : POSITION,
+    out float2 oTexcoord : TEXCOORD0,
+    out float4 oColor : COLOR0,
+    out float4 oFlags : TEXCOORD1
+) {
+    // Proyectar coordenadas 3D a Pantalla
+    oPosition = mul(mvp, float4(position, 1.0));
+
+    // Mantenemos los colores y las texturas originales
+    oTexcoord = texcoord;
+    oColor = (u_use_vtx_color.x > 0.5) ? color : u_color;
+    oFlags = u_flags;
+}
